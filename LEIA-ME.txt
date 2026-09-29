@@ -1,0 +1,15 @@
+JSO Gestão - versão web independente
+
+Estes arquivos são o aplicativo completo, sem dependências de ChatGPT Sites.
+Para instalar no iPhone como aplicativo, publique o conteúdo desta pasta em uma
+hospedagem HTTPS de sua escolha e abra o endereço no Safari. Depois use
+Compartilhar > Adicionar à Tela de Início.
+
+IMPORTANTE: antes de deixar de usar o endereço antigo, abra Backup dos dados
+lá e exporte um arquivo. No novo endereço, importe o backup. O armazenamento
+do navegador é separado para cada endereço. Não apague dados do Safari nem
+deixe de acessar o endereço antigo antes de confirmar a importação.
+
+A hospedagem externa não está incluída neste pacote. Depois de aberto uma
+vez, o aplicativo usa cache para acesso sem internet, sujeito às regras
+de armazenamento do Safari. Mantenha backups regulares.
