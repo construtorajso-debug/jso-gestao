@@ -72,6 +72,11 @@ async function deleteWorkPhoto(index,id){
 }
 function tableView(k){
  const cols=schema[k], rows=db[k];
+ if(k==='obras'){
+  document.querySelector('#view').innerHTML=`<div class="title"><h1>Obras</h1><button class="btn yellow" data-action="new" data-kind="obras">+ Nova obra</button></div><div class="work-balloons">${rows.map((r,i)=>{const [bg,border]=workColor(r['Cliente/Obra']);return `<article class="work-balloon" style="--work-bg:${bg};--work-border:${border}"><button type="button" class="work-balloon-edit" data-action="edit" data-kind="obras" data-index="${i}" aria-label="Editar obra ${esc(r['Cliente/Obra'])}"><strong>${esc(r['Cliente/Obra'])}</strong><span>${esc(r.Status||'Andamento')}</span><span>${money(r['Valor inicial'])}</span>${r['Endereço do cliente']?`<small>${esc(r['Endereço do cliente'])}</small>`:''}<span class="work-balloon-hint">Toque para editar</span></button><button class="btn danger" data-action="delete" data-kind="obras" data-index="${i}" aria-label="Excluir obra ${esc(r['Cliente/Obra'])}">Excluir</button></article>`}).join('')}</div>${rows.length?'':'<p class="muted">Nenhuma obra cadastrada. Toque em Nova obra para começar.</p>'}`;
+  return;
+ }
+
  document.querySelector('#view').innerHTML=`<div class="title"><h1>${labels[k]}</h1><button class="btn yellow" data-action="new" data-kind="${k}">+ Novo lançamento</button></div><div class="panel tablewrap"><table><thead><tr>${cols.map(x=>`<th>${x}</th>`).join('')}<th></th></tr></thead><tbody>${rows.map((r,i)=>`<tr>${cols.map(c=>`<td>${isCurrencyField(k,c)?money(r[c]):esc(r[c])}${k==='gastos'&&c==='Comprovante/Obs.'&&r.comprovanteId?`<br><button class="btn alt" data-action="receipt-view" data-index="${i}">Ver comprovante</button>`:''}</td>`).join('')}<td>${['obras','recebimentos','extras','gastos'].includes(k)?`<button class="btn alt" data-action="edit" data-kind="${k}" data-index="${i}">Editar</button> `:''}<button class="btn danger" data-action="delete" data-kind="${k}" data-index="${i}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 function payPeriod(){
@@ -321,3 +326,4 @@ window.addEventListener('online',updateConnectionNote);
 window.addEventListener('offline',updateConnectionNote);
 updateConnectionNote();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+

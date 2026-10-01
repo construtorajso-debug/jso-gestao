@@ -34,3 +34,6 @@ a.btn{display:inline-flex;align-items:center;justify-content:center;text-decorat
 .diary-entries .title h2{margin:0}.diary-text{white-space:pre-wrap;overflow-wrap:anywhere}.diary-entries .work-photos{margin-top:14px}#diary-pending{margin:12px 0;color:#555}#report-done[readonly]{background:#f4f5f7;min-height:150px}.diary-photo .photo-open{width:100%;min-height:120px}
 
 @media(max-width:850px){nav{overflow-y:auto;overscroll-behavior:contain;padding-bottom:max(20px,env(safe-area-inset-bottom))}nav button{flex-shrink:0}}
+
+.work-balloons{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:16px}.work-balloon{background:var(--work-bg);border:2px solid var(--work-border);border-radius:24px;padding:16px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}.work-balloon-edit{font:inherit;color:var(--ink);background:none;border:0;text-align:left;display:flex;flex-direction:column;gap:10px;width:100%;padding:8px;cursor:pointer;min-height:150px;overflow-wrap:anywhere}.work-balloon-edit strong{font-size:22px}.work-balloon-edit span{font-size:16px}.work-balloon-edit small,.work-balloon-edit .work-balloon-hint{font-size:14px}.work-balloon-edit:focus-visible{outline:3px solid var(--work-border);outline-offset:3px;border-radius:12px}.work-balloon-hint{text-decoration:underline}
+
