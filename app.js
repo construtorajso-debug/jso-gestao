@@ -77,7 +77,7 @@ function tableView(k){
  if(k==='recebimentos')return receiptsView();
  const cols=schema[k], rows=db[k];
  if(k==='obras'){
-  document.querySelector('#view').innerHTML=`<div class="title"><h1>Obras</h1><button class="btn yellow" data-action="new" data-kind="obras">+ Nova obra</button></div><div class="work-balloons">${rows.map((r,i)=>{const [bg,border]=workColor(r['Cliente/Obra']);return `<article class="work-balloon" style="--work-bg:${bg};--work-border:${border}"><button type="button" class="work-balloon-edit" data-action="edit" data-kind="obras" data-index="${i}" aria-label="Editar obra ${esc(r['Cliente/Obra'])}"><strong>${esc(r['Cliente/Obra'])}</strong><span>${esc(r.Status||'Andamento')}</span><span>${money(r['Valor inicial'])}</span>${r['Endereço do cliente']?`<small>${esc(r['Endereço do cliente'])}</small>`:''}<span class="work-balloon-hint">Toque para editar</span></button><button class="btn danger" data-action="delete" data-kind="obras" data-index="${i}" aria-label="Excluir obra ${esc(r['Cliente/Obra'])}">Excluir</button></article>`}).join('')}</div>${rows.length?'':'<p class="muted">Nenhuma obra cadastrada. Toque em Nova obra para começar.</p>'}`;
+  document.querySelector('#view').innerHTML=`<div class="title"><h1>Obras</h1><button class="btn yellow" data-action="new" data-kind="obras">+ Nova obra</button></div><div class="work-balloons">${rows.map((r,i)=>{const [bg,border]=workColor(r['Cliente/Obra']);return `<article class="work-balloon" style="--work-bg:${bg};--work-border:${border}"><button type="button" class="work-balloon-edit" data-action="edit" data-kind="obras" data-index="${i}" aria-label="Editar obra ${esc(r['Cliente/Obra'])}"><strong>${esc(r['Cliente/Obra'])}</strong><span>${esc(r.Status||'Andamento')}</span><span>${money(r['Valor inicial'])}</span>${r['Endereço do cliente']?`<small>${esc(r['Endereço do cliente'])}</small>`:''}<span class="work-balloon-hint">Editar obra</span></button><div class="actions"><button type="button" class="btn alt" data-action="edit" data-kind="obras" data-index="${i}">Editar</button><button type="button" class="btn" data-action="work-quote" data-index="${i}">Ver orçamento</button><button class="btn danger" data-action="delete" data-kind="obras" data-index="${i}" aria-label="Excluir obra ${esc(r['Cliente/Obra'])}">Excluir</button></div></article>`}).join('')}</div>${rows.length?'':'<p class="muted">Nenhuma obra cadastrada. Toque em Nova obra para começar.</p>'}`;
   return;
  }
 
@@ -214,6 +214,19 @@ function importQuoteFromLink(){
   history.replaceState(null,'',location.pathname+location.search);show('orcamentos');document.querySelector('#view').insertAdjacentHTML('afterbegin','<p class="panel" role="status">Orçamento cadastrado neste aparelho. Use PDF para conferir e enviar ao cliente.</p>');return true;
  }catch(e){db.orcamentos.length=oldQuotes;db.clientes.length=oldClients;alert('Não foi possível cadastrar o orçamento pelo link. Verifique o espaço no aparelho e tente novamente.');return false}
 }
+
+function workQuoteIndices(work){
+ if(work.orcamentoId){const i=db.orcamentos.findIndex(q=>q.id===work.orcamentoId);return i<0?[]:[i]}
+ const key=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLocaleLowerCase('pt-BR');
+ return db.orcamentos.map((q,i)=>({q,i})).filter(({q})=>(work.clienteId&&q.clienteId===work.clienteId)||key(q.cliente)===key(work['Cliente/Obra'])).map(({i})=>i);
+}
+function viewWorkQuote(index){
+ const work=db.obras[index];if(!work)return;
+ const indices=workQuoteIndices(work);
+ if(indices.length===1){printQuote(indices[0]);return}
+ modal(`<h2>Orçamento · ${esc(work['Cliente/Obra'])}</h2>${indices.length?`<p>Escolha o orçamento desta obra.</p><div class="cards">${indices.map(i=>{const q=db.orcamentos[i];return `<button type="button" class="card card-link" data-action="quote-print" data-index="${i}"><strong>${money(q.total)}</strong><span>${esc(q.data)}</span><small>${esc(q.status||'Pendente')}</small><span>Ver orçamento</span></button>`}).join('')}</div>`:'<p>Nenhum orçamento salvo foi encontrado para esta obra. Cadastre o orçamento na aba Orçamentos para consultá-lo aqui.</p>'}<div class="actions" style="margin-top:14px"><button class="btn alt" data-action="close">Fechar</button></div>`);
+}
+
 function quotes(){document.querySelector('#view').innerHTML=`<div class="title"><h1>Orçamentos</h1><div class="actions"><button class="btn alt" data-action="service-manage">Meus serviços</button><button class="btn yellow" data-action="quote-new">+ Novo orçamento</button></div></div><div class="panel tablewrap"><table><thead><tr><th>Cliente</th><th>Data</th><th>Total</th><th>Status</th><th>Ações</th></tr></thead><tbody>${db.orcamentos.map((q,i)=>`<tr><td>${esc(q.cliente)}</td><td>${esc(q.data)}</td><td>${money(q.total)}</td><td>${esc(q.status)}</td><td><button class="btn alt" data-action="quote-edit" data-index="${i}">Editar</button> <button class="btn" data-action="quote-print" data-index="${i}">PDF</button> <button class="btn alt" data-action="quote-approve" data-index="${i}">Virar obra</button></td></tr>`).join('')}</tbody></table></div>`}
 const quoteServices=()=>[...JSO_QUOTE_CATALOG,...db.servicosOrcamento];
 const difficultyFactor={normal:1,dificil:1.1,muito_dificil:1.2};
@@ -231,7 +244,7 @@ function quoteForm(editIndex=null){
   if(!document.querySelector('#qd').value||!items.length||items.some(x=>!x.unidade||!Number.isFinite(x.qtd)||x.qtd<=0||x.valor<0)||rows.some(r=>r.querySelector('.quote-service-search').value.trim()&&!r.querySelector('.quote-price').value.trim())){alert('Informe data e pelo menos um serviço com quantidade e valor válidos.');return}
   for(const item of items)if(!quoteServices().some(s=>s.nome.toLocaleLowerCase('pt-BR')===item.descricao.toLocaleLowerCase('pt-BR')))db.servicosOrcamento.push({nome:item.descricao,unidade:item.unidade,valor:item.valor});
   const total=items.reduce((sum,x)=>sum+Math.round(x.qtd*x.valorFinal*100)/100,0);
-  const quote={...existing,clienteId:client.id,celular:client.celular,cliente:client.nome,data:document.querySelector('#qd').value,endereco:document.querySelector('#qe').value,prazo:document.querySelector('#qp').value,pagamento:document.querySelector('#qpg').value,obs:document.querySelector('#qo').value,items,total,status:existing?.status||'Pendente'};
+  const quote={...existing,id:existing?.id||crypto.randomUUID(),clienteId:client.id,celular:client.celular,cliente:client.nome,data:document.querySelector('#qd').value,endereco:document.querySelector('#qe').value,prazo:document.querySelector('#qp').value,pagamento:document.querySelector('#qpg').value,obs:document.querySelector('#qo').value,items,total,status:existing?.status||'Pendente'};
   if(editIndex===null)db.orcamentos.push(quote);else db.orcamentos[editIndex]=quote;
   save();closeM();quotes();
  };
@@ -243,7 +256,7 @@ function updateQuoteTotal(){let total=0;document.querySelectorAll('.quote-item')
 function serviceForm(index=null){const item=index===null?null:db.servicosOrcamento[index];modal(`<h2>${item?'Editar':'Cadastrar'} serviço</h2><div class="formgrid"><label class="full">Descrição<input id="service-name" value="${esc(item?.nome)}" placeholder="Nome do serviço"></label><label>Unidade<input id="service-unit" value="${esc(item?.unidade)}" placeholder="m², metro, unid..."></label><label>Valor base (R$)<input id="service-price" class="money-entry" type="text" inputmode="decimal" value="${item?esc(money(item.valor)):''}" placeholder="R$ 0,00"></label></div><div class="actions" style="margin-top:14px"><button class="btn" data-action="service-save" data-index="${index===null?'':index}">Salvar serviço</button><button class="btn alt" data-action="close">Cancelar</button></div>`)}
 function manageServices(){modal(`<h2>Meus serviços</h2><p>Os 47 serviços da planilha já aparecem nos orçamentos. Cadastre aqui os que faltam.</p><button class="btn" data-action="service-new">+ Cadastrar serviço</button><div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>Serviço</th><th>Unidade</th><th>Valor base</th><th>Ações</th></tr></thead><tbody>${db.servicosOrcamento.map((x,i)=>`<tr><td>${esc(x.nome)}</td><td>${esc(x.unidade)}</td><td>${money(x.valor)}</td><td><button class="btn alt" data-action="service-edit" data-index="${i}">Editar</button> <button class="btn danger" data-action="service-delete" data-index="${i}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`)}
 function saveService(index){const nome=document.querySelector('#service-name').value.trim(),unidade=document.querySelector('#service-unit').value.trim(),priceText=document.querySelector('#service-price').value.trim(),valor=parseCurrency(priceText);if(!nome||!unidade||!priceText||!Number.isFinite(valor)||valor<0){alert('Informe descrição, unidade e valor válido.');return}const item={nome,unidade,valor};if(index===null)db.servicosOrcamento.push(item);else db.servicosOrcamento[index]=item;save();closeM();manageServices()}
-function approve(i){let q=db.orcamentos[i];if(!db.obras.some(o=>o['Cliente/Obra']===q.cliente)){db.obras.push({clienteId:q.clienteId,'Endereço do cliente':q.endereco||'','Celular do cliente':q.celular||'','Cliente/Obra':q.cliente,'Data início':q.data,'Valor inicial':q.total,'Status':'Andamento'});q.status='Aprovado / Obra criada';save()}quotes()}
+function approve(i){let q=db.orcamentos[i];q.id??=crypto.randomUUID();if(!db.obras.some(o=>o['Cliente/Obra']===q.cliente)){db.obras.push({orcamentoId:q.id,clienteId:q.clienteId,'Endereço do cliente':q.endereco||'','Celular do cliente':q.celular||'','Cliente/Obra':q.cliente,'Data início':q.data,'Valor inicial':q.total,'Status':'Andamento'});q.status='Aprovado / Obra criada';save()}quotes()}
 function printQuote(i){let q=db.orcamentos[i];modal(`<div id="printArea"><div style="border-top:12px solid #c51f1f;padding-top:12px"><h1 style="margin:0;color:#c51f1f">JSO — CONSTRUÇÕES E REFORMAS</h1><b>A Construtora do Povo</b><hr><h2>ORÇAMENTO</h2><p><b>Cliente:</b> ${esc(q.cliente)}<br><b>Data:</b> ${esc(q.data)}<br><b>Endereço:</b> ${esc(q.endereco)}</p><table><thead><tr><th>Serviço</th><th>Qtd.</th><th>Unitário</th><th>Total</th></tr></thead><tbody>${q.items.map(x=>{const unit=x.valorFinal??x.valor;return `<tr><td>${esc(x.descricao)}${x.dificuldade?`<br><small>${esc(difficultyName[x.dificuldade]||'Normal')}</small>`:''}</td><td>${esc(x.qtd)} ${esc(x.unidade||'')}</td><td>${money(unit)}</td><td>${money(Math.round(x.qtd*unit*100)/100)}</td></tr>`}).join('')}</tbody></table><h2 style="text-align:right">Total: ${money(q.total)}</h2><p><b>Prazo:</b> ${esc(q.prazo)}<br><b>Pagamento:</b> ${esc(q.pagamento)}</p><p>${esc(q.obs)}</p><br><p>____________________________________<br>Cliente: ${esc(q.cliente)}</p><p>____________________________________<br>Construtora JSO</p></div></div><div class="actions no-print"><button class="btn" data-action="print">Gerar / salvar PDF</button><button class="btn alt" data-action="close">Fechar</button></div>`)}
 function backup(){document.querySelector('#view').innerHTML=`<h1>Backup dos dados</h1><div class="panel"><p>Os dados ficam apenas neste aparelho e navegador. Exporte um backup regularmente e guarde o arquivo em local seguro. Fotos das obras e comprovantes também entram no backup. Se apagar os dados do Safari, você precisará importar o backup.</p><div class="actions"><button class="btn" data-action="backup-export">Exportar backup</button><label class="btn alt">Importar backup<input type="file" accept=".json" style="display:none" data-action="backup-import"></label></div></div>`}
 function attachmentDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open('jso_comprovantes',1);request.onupgradeneeded=()=>request.result.createObjectStore('arquivos',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
@@ -274,6 +287,7 @@ document.addEventListener('click',event=>{
  const action=button.dataset.action, kind=button.dataset.kind, index=Number(button.dataset.index);
  if(action==='new')form(kind);
  else if(action==='edit')form(kind,index);
+ else if(action==='work-quote')viewWorkQuote(index);
  else if(action==='quote-new')quoteForm();
  else if(action==='quote-edit')quoteForm(index);
  else if(action==='delete')del(kind,index);
@@ -355,6 +369,7 @@ window.addEventListener('online',updateConnectionNote);
 window.addEventListener('offline',updateConnectionNote);
 updateConnectionNote();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+
 
 
 
