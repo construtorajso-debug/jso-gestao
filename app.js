@@ -84,15 +84,29 @@ function tableView(k){
  document.querySelector('#view').innerHTML=`<div class="title"><h1>${labels[k]}</h1><button class="btn yellow" data-action="new" data-kind="${k}">+ Novo lançamento</button></div><div class="panel tablewrap"><table><thead><tr>${cols.map(x=>`<th>${x}</th>`).join('')}<th></th></tr></thead><tbody>${rows.map((r,i)=>`<tr>${cols.map(c=>`<td>${isCurrencyField(k,c)?money(r[c]):esc(r[c])}${k==='gastos'&&c==='Comprovante/Obs.'&&r.comprovanteId?`<br><button class="btn alt" data-action="receipt-view" data-index="${i}">Ver comprovante</button>`:''}</td>`).join('')}<td>${['obras','recebimentos','extras','gastos'].includes(k)?`<button class="btn alt" data-action="edit" data-kind="${k}" data-index="${i}">Editar</button> `:''}<button class="btn danger" data-action="delete" data-kind="${k}" data-index="${i}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 
+
+function expenseEntries(){
+ const manual=db.gastos.map((r,i)=>({r,i,source:'gastos'}));
+ const labor=db.colaboradores.map((entry,i)=>({i,source:'colaboradores',r:{
+  Data:entry.Data,Obra:entry.Obra||'',Categoria:'Mão de obra',
+  Descrição:entry.Colaborador||'Colaborador','Qtd.':num(entry.Dias),
+  'Valor total':num(entry['Diária'])*num(entry.Dias)+num(entry.Extras)+num(entry.Alimentação)+num(entry.Transporte),
+  'Forma pagamento':'','Comprovante/Obs.':`Presença registrada · ${num(entry.Dias)} dia(s) × ${money(entry['Diária'])}${num(entry.Extras)?' · extras '+money(entry.Extras):''}${num(entry.Alimentação)?' · alimentação '+money(entry.Alimentação):''}${num(entry.Transporte)?' · transporte '+money(entry.Transporte):''} · ${entry['Pago?']==='Sim'?'Pago':'A pagar'}`,
+  Responsável:entry.Colaborador||''
+ }}));
+ return [...manual,...labor];
+}
+
 function expensesView(){
- const names=[...new Set([...db.obras.map(o=>o['Cliente/Obra']),...db.gastos.map(g=>g.Obra||'')].filter(n=>n!==undefined&&n!==null))];
+ const allEntries=expenseEntries();
+ const names=[...new Set([...db.obras.map(o=>o['Cliente/Obra']),...allEntries.map(({r})=>r.Obra||'')].filter(n=>n!==undefined&&n!==null))];
  if(expensesWork!==null&&!names.includes(expensesWork))expensesWork=null;
  if(expensesWork===null){
-  document.querySelector('#view').innerHTML=`<div class="title"><h1>Gastos</h1><button class="btn yellow" data-action="new" data-kind="gastos">+ Novo lançamento</button></div><div class="work-balloons">${names.map((name,i)=>{const [bg,border]=workColor(name);const entries=db.gastos.filter(g=>(g.Obra||'')===name);return `<article class="work-balloon" style="--work-bg:${bg};--work-border:${border}"><button type="button" class="work-balloon-edit" data-expense-work="${i}" aria-label="Ver gastos de ${esc(name||'Sem obra vinculada')}"><strong>${esc(name||'Sem obra vinculada')}</strong><span>${money(entries.reduce((sum,g)=>sum+num(g['Valor total']),0))}</span><span>${entries.length} lançamento(s)</span><span class="work-balloon-hint">Ver gastos da obra</span></button></article>`}).join('')}</div>${names.length?'':'<p class="muted">Cadastre uma obra para organizar os gastos.</p>'}`;
+  document.querySelector('#view').innerHTML=`<div class="title"><h1>Gastos</h1><button class="btn yellow" data-action="new" data-kind="gastos">+ Novo lançamento</button></div><div class="work-balloons">${names.map((name,i)=>{const [bg,border]=workColor(name);const entries=allEntries.filter(({r})=>(r.Obra||'')===name);return `<article class="work-balloon" style="--work-bg:${bg};--work-border:${border}"><button type="button" class="work-balloon-edit" data-expense-work="${i}" aria-label="Ver gastos de ${esc(name||'Sem obra vinculada')}"><strong>${esc(name||'Sem obra vinculada')}</strong><span>${money(entries.reduce((sum,{r})=>sum+num(r['Valor total']),0))}</span><span>${entries.length} lançamento(s)</span><span class="work-balloon-hint">Ver gastos da obra</span></button></article>`}).join('')}</div>${names.length?'':'<p class="muted">Cadastre uma obra para organizar os gastos.</p>'}`;
   document.querySelectorAll('[data-expense-work]').forEach(button=>button.addEventListener('click',()=>{expensesWork=names[Number(button.dataset.expenseWork)];expensesView()}));return;
  }
- const cols=schema.gastos,rows=db.gastos.map((r,i)=>({r,i})).filter(({r})=>(r.Obra||'')===expensesWork);
- document.querySelector('#view').innerHTML=`<div class="title"><h1>Gastos · ${esc(expensesWork||'Sem obra vinculada')}</h1><div class="actions"><button class="btn alt" id="expenses-back">Todas as obras</button><button class="btn yellow" data-action="new" data-kind="gastos">+ Novo lançamento</button></div></div><p>Total de gastos: <strong>${money(rows.reduce((sum,{r})=>sum+num(r['Valor total']),0))}</strong></p><div class="panel tablewrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}<th>Ações</th></tr></thead><tbody>${rows.map(({r,i})=>`<tr>${cols.map(c=>`<td>${isCurrencyField('gastos',c)?money(r[c]):esc(r[c])}${c==='Comprovante/Obs.'&&r.comprovanteId?`<br><button class="btn alt" data-action="receipt-view" data-index="${i}">Ver comprovante</button>`:''}</td>`).join('')}<td><button class="btn alt" data-action="edit" data-kind="gastos" data-index="${i}">Editar</button> <button class="btn danger" data-action="delete" data-kind="gastos" data-index="${i}">Excluir</button></td></tr>`).join('')||`<tr><td colspan="${cols.length+1}">Nenhum gasto lançado nesta obra.</td></tr>`}</tbody></table></div>`;
+ const cols=schema.gastos,rows=allEntries.filter(({r})=>(r.Obra||'')===expensesWork);
+ document.querySelector('#view').innerHTML=`<div class="title"><h1>Gastos · ${esc(expensesWork||'Sem obra vinculada')}</h1><div class="actions"><button class="btn alt" id="expenses-back">Todas as obras</button><button class="btn yellow" data-action="new" data-kind="gastos">+ Novo lançamento</button></div></div><p>Total de gastos: <strong>${money(rows.reduce((sum,{r})=>sum+num(r['Valor total']),0))}</strong></p><div class="panel tablewrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}<th>Ações</th></tr></thead><tbody>${rows.map(({r,i,source})=>`<tr>${cols.map(c=>`<td>${isCurrencyField('gastos',c)?money(r[c]):esc(r[c])}${source==='gastos'&&c==='Comprovante/Obs.'&&r.comprovanteId?`<br><button class="btn alt" data-action="receipt-view" data-index="${i}">Ver comprovante</button>`:''}</td>`).join('')}<td>${source==='colaboradores'?`<button class="btn alt" data-action="labor-edit" data-index="${i}">Editar presença</button><small style="display:block;margin-top:8px">Mão de obra automática</small>`:`<button class="btn alt" data-action="edit" data-kind="gastos" data-index="${i}">Editar</button> <button class="btn danger" data-action="delete" data-kind="gastos" data-index="${i}">Excluir</button>`}</td></tr>`).join('')||`<tr><td colspan="${cols.length+1}">Nenhum gasto lançado nesta obra.</td></tr>`}</tbody></table></div>`;
  document.querySelector('#expenses-back').addEventListener('click',()=>{expensesWork=null;expensesView()});
 }
 function receiptsView(){
@@ -168,7 +182,7 @@ async function buildPayrollPDF(rows,from,to){
 }
 async function preparePayrollPDF(button){const rows=payrollRows();if(!rows.length)return;const result=document.querySelector('#payroll-pdf-result');button.disabled=true;result.textContent='Preparando o PDF…';try{const [from,to]=attendanceDates,bytes=await buildPayrollPDF(rows,from,to),name=`Pagamento_Colaboradores_JSO_${from}_a_${to}.pdf`,file=new File([bytes],name,{type:'application/pdf'});clearPayrollPDF();preparedPayroll={file,url:URL.createObjectURL(file)};const canShare=!!(navigator.share&&navigator.canShare?.({files:[file]}));result.innerHTML=`<p>PDF pronto com colaboradores, obras, dias e total a pagar.</p><div class="actions">${canShare?'<button class="btn" data-action="payroll-share">Enviar PDF</button>':''}<a class="btn alt" href="${preparedPayroll.url}" download="${esc(name)}">Salvar PDF</a></div>`}catch(e){result.textContent='Não foi possível gerar o PDF. Tente novamente.'}finally{button.disabled=false}}
 async function sharePayrollPDF(){if(!preparedPayroll||!navigator.share)return;try{await navigator.share({files:[preparedPayroll.file],title:'Pagamento dos colaboradores JSO'})}catch(e){if(e.name!=='AbortError')alert('Não foi possível enviar. Use Salvar PDF e anexe o arquivo no WhatsApp.')}}
-function form(k,editIndex=null){
+function form(k,editIndex=null,returnKind=null){
  const cols=schema[k];
  modal(`<h2>${editIndex===null?'Novo':'Editar'} — ${labels[k]}</h2><div class="formgrid">${cols.map(c=>choiceField(k,c,editIndex)).join('')}</div>${k==='gastos'?`<fieldset class="receipt-options"><legend>Comprovante (opcional)</legend><label>Tirar foto<input id="receipt-camera" type="file" accept="image/*" capture="environment"></label><label>Adicionar arquivo<input id="receipt-file" type="file" accept="image/*,.pdf,application/pdf"></label><small>Escolha uma das opções. O arquivo fica salvo neste aparelho e entra no backup.</small></fieldset>`:''}<div class="actions" style="margin-top:14px"><button class="btn" id="ok">Salvar</button><button class="btn alt" data-action="close">Cancelar</button></div>`);
  if(k==='recebimentos'&&editIndex===null&&receiptsWork!==null)document.querySelector('#f_Obra').value=receiptsWork;
@@ -185,7 +199,7 @@ function form(k,editIndex=null){
     const file=document.querySelector('#receipt-camera').files[0]||document.querySelector('#receipt-file').files[0];
     if(file){o.comprovanteId=crypto.randomUUID();await putAttachment({id:o.comprovanteId,name:file.name||'Foto do comprovante',type:file.type||'application/octet-stream',blob:file});}
    }
-   if(editIndex===null)db[k].push(o);else db[k][editIndex]={...db[k][editIndex],...o};if(k==='colaboradores'&&o.Colaborador?.trim()&&!db.equipe.some(p=>p.nome.toLocaleLowerCase('pt-BR')===o.Colaborador.trim().toLocaleLowerCase('pt-BR')))db.equipe.push({nome:o.Colaborador.trim(),funcao:o['Função']||'Outro',diaria:num(o['Diária'])});save();closeM();show(k);
+   if(editIndex===null)db[k].push(o);else db[k][editIndex]={...db[k][editIndex],...o};if(k==='colaboradores'&&o.Colaborador?.trim()&&!db.equipe.some(p=>p.nome.toLocaleLowerCase('pt-BR')===o.Colaborador.trim().toLocaleLowerCase('pt-BR')))db.equipe.push({nome:o.Colaborador.trim(),funcao:o['Função']||'Outro',diaria:num(o['Diária'])});save();closeM();show(returnKind||k);
   }catch(e){alert('Não foi possível salvar o lançamento. Verifique o espaço disponível no iPhone e tente novamente.');button.disabled=false;}
  });
 }
@@ -287,6 +301,7 @@ document.addEventListener('click',event=>{
  const action=button.dataset.action, kind=button.dataset.kind, index=Number(button.dataset.index);
  if(action==='new')form(kind);
  else if(action==='edit')form(kind,index);
+ else if(action==='labor-edit')form('colaboradores',index,'gastos');
  else if(action==='work-quote')viewWorkQuote(index);
  else if(action==='quote-new')quoteForm();
  else if(action==='quote-edit')quoteForm(index);
@@ -369,6 +384,7 @@ window.addEventListener('online',updateConnectionNote);
 window.addEventListener('offline',updateConnectionNote);
 updateConnectionNote();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+
 
 
 
