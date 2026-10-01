@@ -1,5 +1,5 @@
-const CACHE = 'jso-offline-v34';
-const CORE = ['./index.html', './style.css', './app.js', './clients.js', './quote_catalog.js', './report.js', './diary.js', './materials.js', './pdf-lib.min.js'];
+const CACHE = 'jso-offline-v35';
+const CORE = ['./index.html', './style.css', './app.js?v=34', './clients.js', './quote_catalog.js', './report.js', './diary.js', './materials.js', './pdf-lib.min.js'];
 const EXTRA = ['./', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', event => {
