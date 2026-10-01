@@ -71,8 +71,10 @@ async function deleteWorkPhoto(index,id){
  try{await deleteAttachment(id);obra.fotos=(obra.fotos||[]).filter(f=>f.id!==id);save();show('andamento')}catch(e){alert('Não foi possível excluir a foto. Tente novamente.')}
 }
 let expensesWork=null;
+let receiptsWork=null;
 function tableView(k){
  if(k==='gastos')return expensesView();
+ if(k==='recebimentos')return receiptsView();
  const cols=schema[k], rows=db[k];
  if(k==='obras'){
   document.querySelector('#view').innerHTML=`<div class="title"><h1>Obras</h1><button class="btn yellow" data-action="new" data-kind="obras">+ Nova obra</button></div><div class="work-balloons">${rows.map((r,i)=>{const [bg,border]=workColor(r['Cliente/Obra']);return `<article class="work-balloon" style="--work-bg:${bg};--work-border:${border}"><button type="button" class="work-balloon-edit" data-action="edit" data-kind="obras" data-index="${i}" aria-label="Editar obra ${esc(r['Cliente/Obra'])}"><strong>${esc(r['Cliente/Obra'])}</strong><span>${esc(r.Status||'Andamento')}</span><span>${money(r['Valor inicial'])}</span>${r['Endereço do cliente']?`<small>${esc(r['Endereço do cliente'])}</small>`:''}<span class="work-balloon-hint">Toque para editar</span></button><button class="btn danger" data-action="delete" data-kind="obras" data-index="${i}" aria-label="Excluir obra ${esc(r['Cliente/Obra'])}">Excluir</button></article>`}).join('')}</div>${rows.length?'':'<p class="muted">Nenhuma obra cadastrada. Toque em Nova obra para começar.</p>'}`;
@@ -92,6 +94,17 @@ function expensesView(){
  const cols=schema.gastos,rows=db.gastos.map((r,i)=>({r,i})).filter(({r})=>(r.Obra||'')===expensesWork);
  document.querySelector('#view').innerHTML=`<div class="title"><h1>Gastos · ${esc(expensesWork||'Sem obra vinculada')}</h1><div class="actions"><button class="btn alt" id="expenses-back">Todas as obras</button><button class="btn yellow" data-action="new" data-kind="gastos">+ Novo lançamento</button></div></div><p>Total de gastos: <strong>${money(rows.reduce((sum,{r})=>sum+num(r['Valor total']),0))}</strong></p><div class="panel tablewrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}<th>Ações</th></tr></thead><tbody>${rows.map(({r,i})=>`<tr>${cols.map(c=>`<td>${isCurrencyField('gastos',c)?money(r[c]):esc(r[c])}${c==='Comprovante/Obs.'&&r.comprovanteId?`<br><button class="btn alt" data-action="receipt-view" data-index="${i}">Ver comprovante</button>`:''}</td>`).join('')}<td><button class="btn alt" data-action="edit" data-kind="gastos" data-index="${i}">Editar</button> <button class="btn danger" data-action="delete" data-kind="gastos" data-index="${i}">Excluir</button></td></tr>`).join('')||`<tr><td colspan="${cols.length+1}">Nenhum gasto lançado nesta obra.</td></tr>`}</tbody></table></div>`;
  document.querySelector('#expenses-back').addEventListener('click',()=>{expensesWork=null;expensesView()});
+}
+function receiptsView(){
+ const names=[...new Set([...db.obras.map(o=>o['Cliente/Obra']),...db.recebimentos.map(g=>g.Obra||'')].filter(n=>n!==undefined&&n!==null))];
+ if(receiptsWork!==null&&!names.includes(receiptsWork))receiptsWork=null;
+ if(receiptsWork===null){
+  document.querySelector('#view').innerHTML=`<div class="title"><h1>Recebimentos</h1><button class="btn yellow" data-action="new" data-kind="recebimentos">+ Novo lançamento</button></div><div class="work-balloons">${names.map((name,i)=>{const [bg,border]=workColor(name);const entries=db.recebimentos.filter(g=>(g.Obra||'')===name);return `<article class="work-balloon" style="--work-bg:${bg};--work-border:${border}"><button type="button" class="work-balloon-edit" data-receipt-work="${i}" aria-label="Ver recebimentos de ${esc(name||'Sem obra vinculada')}"><strong>${esc(name||'Sem obra vinculada')}</strong><span>${money(entries.reduce((sum,g)=>sum+num(g['Valor recebido']),0))}</span><span>${entries.length} lançamento(s)</span><span class="work-balloon-hint">Ver recebimentos da obra</span></button></article>`}).join('')}</div>${names.length?'':'<p class="muted">Cadastre uma obra para organizar os recebimentos.</p>'}`;
+  document.querySelectorAll('[data-receipt-work]').forEach(button=>button.addEventListener('click',()=>{receiptsWork=names[Number(button.dataset.receiptWork)];receiptsView()}));return;
+ }
+ const cols=schema.recebimentos,rows=db.recebimentos.map((r,i)=>({r,i})).filter(({r})=>(r.Obra||'')===receiptsWork);
+ document.querySelector('#view').innerHTML=`<div class="title"><h1>Recebimentos · ${esc(receiptsWork||'Sem obra vinculada')}</h1><div class="actions"><button class="btn alt" id="receipts-back">Todas as obras</button><button class="btn yellow" data-action="new" data-kind="recebimentos">+ Novo lançamento</button></div></div><p>Total recebido: <strong>${money(rows.reduce((sum,{r})=>sum+num(r['Valor recebido']),0))}</strong></p><div class="panel tablewrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}<th>Ações</th></tr></thead><tbody>${rows.map(({r,i})=>`<tr>${cols.map(c=>`<td>${isCurrencyField('recebimentos',c)?money(r[c]):esc(r[c])}${c==='Comprovante/Obs.'&&r.comprovanteId?`<br><button class="btn alt" data-action="receipt-view" data-index="${i}">Ver comprovante</button>`:''}</td>`).join('')}<td><button class="btn alt" data-action="edit" data-kind="recebimentos" data-index="${i}">Editar</button> <button class="btn danger" data-action="delete" data-kind="recebimentos" data-index="${i}">Excluir</button></td></tr>`).join('')||`<tr><td colspan="${cols.length+1}">Nenhum recebimento lançado nesta obra.</td></tr>`}</tbody></table></div>`;
+ document.querySelector('#receipts-back').addEventListener('click',()=>{receiptsWork=null;receiptsView()});
 }
 function payPeriod(){
  const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-(d.getDay()+6)%7);
@@ -158,6 +171,7 @@ async function sharePayrollPDF(){if(!preparedPayroll||!navigator.share)return;tr
 function form(k,editIndex=null){
  const cols=schema[k];
  modal(`<h2>${editIndex===null?'Novo':'Editar'} — ${labels[k]}</h2><div class="formgrid">${cols.map(c=>choiceField(k,c,editIndex)).join('')}</div>${k==='gastos'?`<fieldset class="receipt-options"><legend>Comprovante (opcional)</legend><label>Tirar foto<input id="receipt-camera" type="file" accept="image/*" capture="environment"></label><label>Adicionar arquivo<input id="receipt-file" type="file" accept="image/*,.pdf,application/pdf"></label><small>Escolha uma das opções. O arquivo fica salvo neste aparelho e entra no backup.</small></fieldset>`:''}<div class="actions" style="margin-top:14px"><button class="btn" id="ok">Salvar</button><button class="btn alt" data-action="close">Cancelar</button></div>`);
+ if(k==='recebimentos'&&editIndex===null&&receiptsWork!==null)document.querySelector('#f_Obra').value=receiptsWork;
  if(k==='gastos'&&editIndex===null&&expensesWork!==null)document.querySelector('#f_Obra').value=expensesWork;
  if(editIndex!==null)cols.filter(c=>c!=='Obra'&&!formChoices[c]&&!isCurrencyField(k,c)).forEach(c=>{document.querySelector('#f_'+slug(c)).value=db[k][editIndex][c]??''});
  document.querySelector('#ok').addEventListener('click',async()=>{
@@ -341,5 +355,6 @@ window.addEventListener('online',updateConnectionNote);
 window.addEventListener('offline',updateConnectionNote);
 updateConnectionNote();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+
 
 
