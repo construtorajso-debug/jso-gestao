@@ -1,4 +1,4 @@
-const CACHE = 'jso-offline-v31';
+const CACHE = 'jso-offline-v32';
 const CORE = ['./index.html', './style.css', './app.js', './clients.js', './quote_catalog.js', './report.js', './diary.js', './materials.js', './pdf-lib.min.js'];
 const EXTRA = ['./', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png'];
 
