@@ -16,20 +16,23 @@ function reportView(index = selectedReportIndex) {
     view.innerHTML = '<h1>Situação da obra</h1><div class="panel"><p>Cadastre uma obra na aba Obras para criar o relatório do cliente.</p></div>';
     return;
   }
-  const relatorio = obra.relatorio || {};
+  const relatorio = effectiveReport(obra);
+  const hasDiary = diaryEntries(obra).length > 0;
   view.innerHTML = `<div class="title"><h1>Situação da obra</h1></div><div class="panel report-panel">
     <label>Escolha a obra<select id="report-work">${db.obras.map((o,i)=>`<option value="${i}" ${i===selectedReportIndex?'selected':''}>${esc(o['Cliente/Obra']||'Obra sem nome')}</option>`).join('')}</select></label>
     <div class="formgrid report-fields">
       <label>Etapa atual<input id="report-stage" value="${esc(relatorio.etapa)}" placeholder="Ex.: Alvenaria do primeiro pavimento"></label>
       <label>Percentual executado<input id="report-percent" type="number" min="0" max="100" value="${esc(relatorio.percentual)}" placeholder="0 a 100"></label>
-      <label class="full">Serviços realizados<textarea id="report-done" placeholder="Descreva o que já foi feito">${esc(relatorio.realizados)}</textarea></label>
+      <label class="full">Serviços realizados<textarea id="report-done" ${hasDiary?'readonly':''} placeholder="Descreva o que já foi feito">${esc(hasDiary?diarySummary(obra):relatorio.realizados)}</textarea></label>
+      ${hasDiary?`<label class="full">Complemento dos serviços (opcional)<textarea id="report-manual-done">${esc(obra.relatorio?.realizados)}</textarea></label><p class="full muted">Os serviços acima incluem automaticamente o Diário de Obra. Edite os registros no diário para corrigir datas, serviços ou fotos.</p>`:''}
       <label class="full">Próximas etapas<textarea id="report-next" placeholder="Descreva os próximos serviços">${esc(relatorio.proximas)}</textarea></label>
       <label class="full">Observações para o cliente<textarea id="report-notes" placeholder="Informações importantes sobre a obra">${esc(relatorio.observacoes)}</textarea></label>
     </div>
-    <p class="muted">O PDF inclui status, andamento, fotos desta obra e os valores de contrato, extras e recebimentos cadastrados. Gastos internos da empresa não aparecem.</p>
+    <p class="muted">O PDF inclui status, andamento, diário e fotos desta obra e os valores de contrato, extras e recebimentos cadastrados. Gastos internos da empresa não aparecem.</p>
     <div class="actions"><button class="btn alt" data-action="report-save">Salvar situação</button><button class="btn yellow" data-action="report-generate">Gerar PDF</button></div>
     <div id="report-result" class="report-result" aria-live="polite"></div>
-  </div>`;
+  </div>${diaryEntries(obra).length?`<section class="panel"><h2>Fotos do diário</h2><div class="work-photos">${diaryEntries(obra).flatMap(e=>(e.fotos||[]).map(f=>diaryPhotoCard(f))).join('')||'<p>Nenhuma foto no diário.</p>'}</div></section>`:''}`;
+  hydrateDiaryPhotos();
 }
 function saveReport() {
   const obra = db.obras[selectedReportIndex];
@@ -42,7 +45,7 @@ function saveReport() {
   obra.relatorio = {
     etapa: document.querySelector('#report-stage').value.trim(),
     percentual,
-    realizados: document.querySelector('#report-done').value.trim(),
+    realizados: (document.querySelector('#report-manual-done')||document.querySelector('#report-done')).value.trim(),
     proximas: document.querySelector('#report-next').value.trim(),
     observacoes: document.querySelector('#report-notes').value.trim(),
     atualizadoEm: new Date().toISOString()
@@ -140,7 +143,7 @@ async function buildReportPDF(obra) {
   line(`Endereço: ${obra['Endereço do cliente']||'-'}`);
   line(`Início: ${obra['Data início']||'-'}    Status: ${obra.Status||'-'}`);
   section('Andamento');
-  const r=obra.relatorio||{};
+  const r=effectiveReport(obra);
   line(`Etapa atual: ${r.etapa||'Não informada'}`);
   line(`Executado: ${r.percentual===''||r.percentual==null?'Não informado':r.percentual+'%'}`);
   line('Serviços realizados:',{font:bold,gap:2});line(r.realizados||'Não informados.',{indent:12});
@@ -156,7 +159,7 @@ async function buildReportPDF(obra) {
   line(`Total recebido: ${money(recebido)}`);line(`Saldo a receber: ${money(inicial+extraTotal-recebido)}`,{font:bold});
   if(extras.length){line('Extras registrados:',{font:bold,gap:2});extras.forEach(x=>line(`- ${x['Serviço adicional']||'Serviço extra'}: ${money(num(x.Valor))}`,{indent:12,size:10,gap:1}))}
   if(recebimentos.length){line('Recebimentos registrados:',{font:bold,gap:2});recebimentos.forEach(x=>line(`- ${x.Data||'Sem data'}: ${money(num(x['Valor recebido']))} ${x.Descrição||''}`,{indent:12,size:10,gap:1}))}
-  const fotos=obra.fotos||[];
+  const fotos=reportPhotos(obra);
   section(`Fotos da obra (${fotos.length})`);
   if(!fotos.length)line('Nenhuma foto adicionada.');
   for(let i=0;i<fotos.length;i++){
@@ -168,6 +171,8 @@ async function buildReportPDF(obra) {
     const size=image.scaleToFit(W-left-right,270);
     ensure(size.height+48);
     line(`Foto ${i+1}: ${registro.name||fotos[i].name||'Foto da obra'}`,{font:bold,size:10,gap:4});
+    if(fotos[i].caption)line(fotos[i].caption,{size:10,color:gray,gap:4});
+    ensure(size.height+20);
     page.drawImage(image,{x:left,y:y-size.height,width:size.width,height:size.height});
     y-=size.height+20;
   }

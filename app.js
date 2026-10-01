@@ -9,7 +9,7 @@ const schema={
  gastos:['Data','Obra','Categoria','Descrição','Qtd.','Valor total','Forma pagamento','Comprovante/Obs.','Responsável'],
  colaboradores:['Data','Obra','Colaborador','Função','Diária','Dias','Extras','Alimentação','Transporte','Pago?'],
  imprevistos:['Data','Obra','Motivo','Descrição','Valor','Responsável','Observação']};
-const labels={inicio:'Quem Somos',dashboard:'Resumo Geral',obras:'Obras',andamento:'Obras em andamento',situacao:'Situação da obra',materiais:'Lista de material',recebimentos:'Recebimentos',extras:'Serviços Extras',gastos:'Gastos',colaboradores:'Colaboradores',clientes:'Clientes',categorias:'Categorias',orcamentos:'Orçamentos',graficos:'Painel Gráficos'};
+const labels={inicio:'Quem Somos',dashboard:'Resumo Geral',obras:'Obras',andamento:'Obras em andamento',situacao:'Situação da obra',diario:'Diário de Obra',materiais:'Lista de material',recebimentos:'Recebimentos',extras:'Serviços Extras',gastos:'Gastos',colaboradores:'Colaboradores',clientes:'Clientes',categorias:'Categorias',orcamentos:'Orçamentos',graficos:'Painel Gráficos'};
 const cats=['Combustível','Alimentação','Passagem/Transporte','Mão de obra','Material','Ferramentas','Aluguel de equipamentos','Imprevistos'];
 const formChoices={
  'Status':['Andamento','Concluído','Pausado'],
@@ -42,7 +42,7 @@ let dashboardWork='';
 function nav(){let n=document.querySelector('#nav');n.innerHTML=Object.entries(labels).map(([k,v])=>`<button data-v="${k}">${v}</button>`).join('')+`<button data-v="backup">Backup dos dados</button>`;n.onclick=e=>{if(e.target.dataset.v){show(e.target.dataset.v);n.classList.remove('open')}};}
 const photoURLs=new Set();
 function clearPhotoURLs(){for(const url of photoURLs)URL.revokeObjectURL(url);photoURLs.clear()}
-function show(k){clearPhotoURLs();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.v===k)); if(k==='inicio')return aboutView(); if(k==='clientes')return clientsView(); if(k==='andamento')return ongoingWorks(); if(k==='situacao')return reportView(); if(k==='materiais')return materialView(); if(k==='colaboradores')return attendanceView(); if(k==='dashboard'||k==='graficos')return dashboard(k); if(k==='categorias')return categories(); if(k==='orcamentos')return quotes(); if(k==='backup')return backup(); tableView(k)}
+function show(k){clearPhotoURLs();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.v===k)); if(k==='diario')return diaryView(); if(k==='inicio')return aboutView(); if(k==='clientes')return clientsView(); if(k==='andamento')return ongoingWorks(); if(k==='situacao')return reportView(); if(k==='materiais')return materialView(); if(k==='colaboradores')return attendanceView(); if(k==='dashboard'||k==='graficos')return dashboard(k); if(k==='categorias')return categories(); if(k==='orcamentos')return quotes(); if(k==='backup')return backup(); tableView(k)}
 function aboutView(){
  document.querySelector('#view').innerHTML=`<section class="jso-home"><div class="jso-intro"><span class="jso-eyebrow">QUEM SOMOS</span><h1>Construtora JSO</h1><p class="jso-slogan">A Construtora do Povo</p><p>Construções e reformas para transformar seu projeto em realidade.</p></div><section class="panel"><h2>Construções e reformas</h2><p>A JSO atua com construção, reforma e acabamento, do início da obra aos detalhes finais.</p><h3>Principais serviços</h3><div class="jso-services"><div><strong>Estrutura e alvenaria</strong><p>Fundações, pilares, vigas, lajes e muros.</p></div><div><strong>Reformas e acabamentos</strong><p>Porcelanato, revestimentos, drywall e gesso.</p></div><div><strong>Elétrica e hidráulica</strong><p>Instalações e infraestrutura para sua obra.</p></div><div><strong>Pintura e fachadas</strong><p>Pintura interna e externa, texturas e impermeabilização.</p></div></div></section><section class="panel jso-contact"><h2>Fale com a JSO</h2><p>WhatsApp: (21) 99639-2113<br>Instagram: @casas_jso<br>E-mail: construtorajso@gmail.com</p></section></section>`;
 }
@@ -151,7 +151,7 @@ async function del(k,i){
  if(confirm('Excluir este lançamento?')){
   const item=db[k][i];
   if(k==='gastos'&&item.comprovanteId)await deleteAttachment(item.comprovanteId).catch(()=>{});
-  if(k==='obras')for(const foto of item.fotos||[])await deleteAttachment(foto.id).catch(()=>{});
+  if(k==='obras')for(const foto of [...(item.fotos||[]),...(item.diario||[]).flatMap(e=>e.fotos||[])])await deleteAttachment(foto.id).catch(()=>{});
   db[k].splice(i,1);save();show(k);
  }
 }
