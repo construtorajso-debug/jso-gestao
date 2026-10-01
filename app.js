@@ -164,6 +164,22 @@ async function del(k,i){
  }
 }
 function categories(){document.querySelector('#view').innerHTML=`<h1>Categorias</h1><div class="panel"><table><thead><tr><th>Categoria</th><th>Tipo</th></tr></thead><tbody>${cats.map((x,i)=>`<tr><td>${x}</td><td>${['Operacional','Operacional','Operacional','Pessoal','Obra','Operacional','Operacional','Extra'][i]}</td></tr>`).join('')}</tbody></table></div>`}
+function importQuoteFromLink(){
+ if(!location.hash.startsWith('#orcamento='))return false;
+ const oldQuotes=db.orcamentos.length,oldClients=db.clientes.length;
+ try{
+  const encoded=location.hash.slice(11);if(encoded.length>50000)throw Error();
+  const bytes=Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+  const data=JSON.parse(new TextDecoder().decode(bytes));
+  if(typeof data.id!=='string'||!data.id||typeof data.cliente!=='string'||!data.cliente.trim()||!Array.isArray(data.items)||!data.items.length||data.items.length>100)throw Error();
+  if(!db.orcamentos.some(q=>q.importId===data.id)){
+   const items=data.items.map(row=>{if(!Array.isArray(row)||typeof row[0]!=='string'||!row[0].trim()||typeof row[1]!=='number'||!Number.isFinite(row[1])||row[1]<0)throw Error();return {descricao:row[0],unidade:'serviço',qtd:1,valor:row[1],valorFinal:row[1],dificuldade:'normal'}});
+   let client=findClient(data.cliente);if(!client){client={id:crypto.randomUUID(),nome:data.cliente.trim(),endereco:'',celular:''};db.clientes.push(client)}
+   db.orcamentos.push({importId:data.id,clienteId:client.id,cliente:client.nome,endereco:client.endereco||'',celular:client.celular||'',data:typeof data.data==='string'?data.data:today(),prazo:'A combinar',pagamento:'A combinar',obs:typeof data.obs==='string'?data.obs:'',items,total:items.reduce((sum,item)=>sum+Math.round(item.valor*100),0)/100,status:'Pendente'});save();
+  }
+  history.replaceState(null,'',location.pathname+location.search);show('orcamentos');document.querySelector('#view').insertAdjacentHTML('afterbegin','<p class="panel" role="status">Orçamento cadastrado neste aparelho. Use PDF para conferir e enviar ao cliente.</p>');return true;
+ }catch(e){db.orcamentos.length=oldQuotes;db.clientes.length=oldClients;alert('Não foi possível cadastrar o orçamento pelo link. Verifique o espaço no aparelho e tente novamente.');return false}
+}
 function quotes(){document.querySelector('#view').innerHTML=`<div class="title"><h1>Orçamentos</h1><div class="actions"><button class="btn alt" data-action="service-manage">Meus serviços</button><button class="btn yellow" data-action="quote-new">+ Novo orçamento</button></div></div><div class="panel tablewrap"><table><thead><tr><th>Cliente</th><th>Data</th><th>Total</th><th>Status</th><th>Ações</th></tr></thead><tbody>${db.orcamentos.map((q,i)=>`<tr><td>${esc(q.cliente)}</td><td>${esc(q.data)}</td><td>${money(q.total)}</td><td>${esc(q.status)}</td><td><button class="btn" data-action="quote-print" data-index="${i}">PDF</button> <button class="btn alt" data-action="quote-approve" data-index="${i}">Virar obra</button></td></tr>`).join('')}</tbody></table></div>`}
 const quoteServices=()=>[...JSO_QUOTE_CATALOG,...db.servicosOrcamento];
 const difficultyFactor={normal:1,dificil:1.1,muito_dificil:1.2};
@@ -274,7 +290,7 @@ document.addEventListener('change',event=>{
  if(event.target.dataset.action==='backup-import'&&event.target.files[0])importData(event.target.files[0]);
 });
 initializeClients();nav();show('inicio');
-window.addEventListener('pageshow',()=>{closeM();document.querySelector('#client-modal')?.remove();show('inicio')});
+window.addEventListener('pageshow',()=>{closeM();document.querySelector('#client-modal')?.remove();if(!importQuoteFromLink())show('inicio')});
 const connectionNote=document.createElement('div');
 connectionNote.id='connectionNote';
 connectionNote.setAttribute('role','status');
