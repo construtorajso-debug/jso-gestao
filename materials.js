@@ -35,7 +35,7 @@ function materialView(editId=null){
  const lista=db.listasMateriais.find(x=>x.id===editId);
  document.querySelector('#view').innerHTML=`<div class="title"><h1>Lista de material</h1></div>
  <section class="panel material-editor"><h2>${lista?'Editar lista':'Nova lista'}</h2>
- <div class="formgrid"><label>Cliente / nome da lista<input id="material-client" value="${esc(lista?.cliente)}" placeholder="Ex.: Henrique"></label>
+ <div class="formgrid">${clientPicker('material-client',lista?.cliente||'')}
  <label>Obra (opcional)<select id="material-work"><option value="">Sem obra vinculada</option>${db.obras.map(o=>`<option value="${esc(o['Cliente/Obra'])}" ${lista?.obra===o['Cliente/Obra']?'selected':''}>${esc(o['Cliente/Obra'])}</option>`).join('')}</select></label></div>
  <datalist id="material-catalog">${materialCatalog().map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist><div class="material-rows" id="material-rows">${(lista?.itens?.length?lista.itens:[{}]).map(materialRow).join('')}</div>
  <div class="actions"><button class="btn alt" data-action="material-row-add">+ Adicionar material</button><button class="btn yellow" data-action="material-save" data-id="${esc(lista?.id)}">Salvar lista inteira</button>${lista?'<button class="btn alt" data-action="material-new">Nova lista</button>':''}</div>
@@ -45,14 +45,14 @@ function materialView(editId=null){
 
 function addMaterialRow(){document.querySelector('#material-rows').insertAdjacentHTML('beforeend',materialRow());document.querySelector('#material-rows .material-row:last-child .material-name')?.focus()}
 function saveMaterialList(id){
- const cliente=document.querySelector('#material-client').value.trim();
+ const client=selectedClient('material-client');if(!client)return;const cliente=client.nome,clienteId=client.id;
  const obra=document.querySelector('#material-work').value;
  const itens=[...document.querySelectorAll('.material-row')].map(row=>({material:row.querySelector('.material-name').value.trim(),quantidade:row.querySelector('.material-quantity').value.trim()}));
  if(!cliente){alert('Informe o cliente ou nome da lista.');return}
  if(!itens.length||itens.some(item=>!item.material||!item.quantidade)){alert('Preencha material e quantidade em todas as linhas, ou remova as linhas vazias.');return}
  const existing=db.listasMateriais.find(x=>x.id===id);
- if(existing){Object.assign(existing,{cliente,obra,itens})}
- else db.listasMateriais.push({id:crypto.randomUUID(),cliente,obra,data:today(),itens});
+ if(existing){Object.assign(existing,{clienteId,cliente,obra,itens})}
+ else db.listasMateriais.push({id:crypto.randomUUID(),clienteId,cliente,obra,data:today(),itens});
  save();materialView();
 }
 function deleteMaterialList(id){
