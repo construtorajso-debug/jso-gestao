@@ -249,7 +249,9 @@ function renderServiceMatches(row){const input=row.querySelector('.quote-service
 function chooseQuoteService(row,index){const item=quoteServices()[index];if(!item)return;row.querySelector('.quote-service-search').value=item.nome;row.querySelector('.quote-unit').value=item.unidade;row.querySelector('.quote-price').value=money(item.valor);row.querySelector('.quote-matches').hidden=true;updateQuoteTotal()}
 function quoteForm(editIndex=null){
  const existing=editIndex===null?null:db.orcamentos[editIndex];if(editIndex!==null&&!existing)return;
- modal(`<h2>${existing?'Editar':'Novo'} orçamento</h2><div class="formgrid">${clientPicker('qc',existing?.cliente||'','Cliente','qe')}<label>Data<input id="qd" type="date" value="${esc(existing?.data||today())}"></label><label class="full">Endereço<input id="qe" value="${esc(existing?.endereco)}"></label><label class="full">Prazo<input id="qp" value="${esc(existing?.prazo)}" placeholder="Ex.: 3 semanas"></label><label class="full">Forma de pagamento<input id="qpg" value="${esc(existing?.pagamento??'A combinar')}"></label><label class="full">Observações<textarea id="qo">${esc(existing?.obs)}</textarea></label></div><h3>Serviços</h3><p class="muted">Busque um serviço ou digite um novo. Você pode alterar descrição, quantidade, valor e dificuldade, adicionar e remover itens.</p><div id="items"></div><button class="btn alt" data-action="item-add">+ Serviço</button><h3 class="quote-grand-total">Total: ${money(0)}</h3><div class="actions" style="margin-top:14px"><button class="btn" id="saveQ">${existing?'Salvar alterações':'Salvar orçamento'}</button><button class="btn alt" data-action="close">Cancelar</button></div>`);
+ const quotePhotos=(existing?.fotos||[]).map(f=>({...f}));
+ modal(`<h2>${existing?'Editar':'Novo'} orçamento</h2><div class="formgrid">${clientPicker('qc',existing?.cliente||'','Cliente','qe')}<label>Data<input id="qd" type="date" value="${esc(existing?.data||today())}"></label><label class="full">Endereço<input id="qe" value="${esc(existing?.endereco)}"></label><label class="full">Prazo<input id="qp" value="${esc(existing?.prazo)}" placeholder="Ex.: 3 semanas"></label><label class="full">Forma de pagamento<input id="qpg" value="${esc(existing?.pagamento??'A combinar')}"></label><label class="full">Observações<textarea id="qo">${esc(existing?.obs)}</textarea></label></div><h3>Fotos do orçamento</h3><p>Adicione fotos do local ou dos serviços. Elas serão incluídas no PDF.</p><div class="photo-inputs"><label>Tirar foto<input id="quote-camera" type="file" accept="image/*" capture="environment"></label><label>Adicionar fotos<input id="quote-gallery" type="file" accept="image/*" multiple></label></div><div id="quote-photos" class="work-photos"></div><p id="quote-photo-status" role="status"></p><h3>Serviços</h3><p class="muted">Busque um serviço ou digite um novo. Você pode alterar descrição, quantidade, valor e dificuldade, adicionar e remover itens.</p><div id="items"></div><button class="btn alt" data-action="item-add">+ Serviço</button><h3 class="quote-grand-total">Total: ${money(0)}</h3><div class="actions" style="margin-top:14px"><button class="btn" id="saveQ">${existing?'Salvar alterações':'Salvar orçamento'}</button><button class="btn alt" data-action="close">Cancelar</button></div>`);
+ setupQuotePhotos(quotePhotos);
  (existing?.items?.length?existing.items:[{}]).forEach(item=>addItem(item));updateQuoteTotal();
  document.querySelector('#saveQ').onclick=()=>{
   const client=selectedClient('qc');if(!client)return;
@@ -258,9 +260,9 @@ function quoteForm(editIndex=null){
   if(!document.querySelector('#qd').value||!items.length||items.some(x=>!x.unidade||!Number.isFinite(x.qtd)||x.qtd<=0||x.valor<0)||rows.some(r=>r.querySelector('.quote-service-search').value.trim()&&!r.querySelector('.quote-price').value.trim())){alert('Informe data e pelo menos um serviço com quantidade e valor válidos.');return}
   for(const item of items)if(!quoteServices().some(s=>s.nome.toLocaleLowerCase('pt-BR')===item.descricao.toLocaleLowerCase('pt-BR')))db.servicosOrcamento.push({nome:item.descricao,unidade:item.unidade,valor:item.valor});
   const total=items.reduce((sum,x)=>sum+Math.round(x.qtd*x.valorFinal*100)/100,0);
-  const quote={...existing,id:existing?.id||crypto.randomUUID(),clienteId:client.id,celular:client.celular,cliente:client.nome,data:document.querySelector('#qd').value,endereco:document.querySelector('#qe').value,prazo:document.querySelector('#qp').value,pagamento:document.querySelector('#qpg').value,obs:document.querySelector('#qo').value,items,total,status:existing?.status||'Pendente'};
+  const quote={...existing,id:existing?.id||crypto.randomUUID(),clienteId:client.id,celular:client.celular,cliente:client.nome,data:document.querySelector('#qd').value,endereco:document.querySelector('#qe').value,prazo:document.querySelector('#qp').value,pagamento:document.querySelector('#qpg').value,obs:document.querySelector('#qo').value,fotos:quotePhotos.map(f=>({...f})),items,total,status:existing?.status||'Pendente'};
   if(editIndex===null)db.orcamentos.push(quote);else db.orcamentos[editIndex]=quote;
-  save();closeM();quotes();
+  try{save()}catch(error){if(editIndex===null)db.orcamentos.pop();else db.orcamentos[editIndex]=existing;alert('Não foi possível salvar. Faça backup e verifique o espaço disponível.');return}closeM();quotes();
  };
 }
 function addItem(item={}){
@@ -271,7 +273,9 @@ function serviceForm(index=null){const item=index===null?null:db.servicosOrcamen
 function manageServices(){modal(`<h2>Meus serviços</h2><p>Os 47 serviços da planilha já aparecem nos orçamentos. Cadastre aqui os que faltam.</p><button class="btn" data-action="service-new">+ Cadastrar serviço</button><div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>Serviço</th><th>Unidade</th><th>Valor base</th><th>Ações</th></tr></thead><tbody>${db.servicosOrcamento.map((x,i)=>`<tr><td>${esc(x.nome)}</td><td>${esc(x.unidade)}</td><td>${money(x.valor)}</td><td><button class="btn alt" data-action="service-edit" data-index="${i}">Editar</button> <button class="btn danger" data-action="service-delete" data-index="${i}">Excluir</button></td></tr>`).join('')}</tbody></table></div>`)}
 function saveService(index){const nome=document.querySelector('#service-name').value.trim(),unidade=document.querySelector('#service-unit').value.trim(),priceText=document.querySelector('#service-price').value.trim(),valor=parseCurrency(priceText);if(!nome||!unidade||!priceText||!Number.isFinite(valor)||valor<0){alert('Informe descrição, unidade e valor válido.');return}const item={nome,unidade,valor};if(index===null)db.servicosOrcamento.push(item);else db.servicosOrcamento[index]=item;save();closeM();manageServices()}
 function approve(i){let q=db.orcamentos[i];q.id??=crypto.randomUUID();if(!db.obras.some(o=>o['Cliente/Obra']===q.cliente)){db.obras.push({orcamentoId:q.id,clienteId:q.clienteId,'Endereço do cliente':q.endereco||'','Celular do cliente':q.celular||'','Cliente/Obra':q.cliente,'Data início':q.data,'Valor inicial':q.total,'Status':'Andamento'});q.status='Aprovado / Obra criada';save()}quotes()}
-function printQuote(i){let q=db.orcamentos[i];modal(`<div id="printArea"><div style="border-top:12px solid #c51f1f;padding-top:12px"><h1 style="margin:0;color:#c51f1f">JSO — CONSTRUÇÕES E REFORMAS</h1><b>A Construtora do Povo</b><hr><h2>ORÇAMENTO</h2><p><b>Cliente:</b> ${esc(q.cliente)}<br><b>Data:</b> ${esc(q.data)}<br><b>Endereço:</b> ${esc(q.endereco)}</p><table><thead><tr><th>Serviço</th><th>Qtd.</th><th>Unitário</th><th>Total</th></tr></thead><tbody>${q.items.map(x=>{const unit=x.valorFinal??x.valor;return `<tr><td>${esc(x.descricao)}${x.dificuldade?`<br><small>${esc(difficultyName[x.dificuldade]||'Normal')}</small>`:''}</td><td>${esc(x.qtd)} ${esc(x.unidade||'')}</td><td>${money(unit)}</td><td>${money(Math.round(x.qtd*unit*100)/100)}</td></tr>`}).join('')}</tbody></table><h2 style="text-align:right">Total: ${money(q.total)}</h2><p><b>Prazo:</b> ${esc(q.prazo)}<br><b>Pagamento:</b> ${esc(q.pagamento)}</p><p>${esc(q.obs)}</p><br><p>____________________________________<br>Cliente: ${esc(q.cliente)}</p><p>____________________________________<br>Construtora JSO</p></div></div><div class="actions no-print"><button class="btn" data-action="print">Gerar / salvar PDF</button><button class="btn alt" data-action="close">Fechar</button></div>`)}
+async function printQuote(i){let q=db.orcamentos[i];let photoHTML='';
+ try{for(const photo of q.fotos||[]){const stored=await getAttachment(photo.id);if(!stored)throw Error('missing');const src=await fileDataURL(stored.blob);photoHTML+='<figure style="margin:16px 0;break-inside:avoid"><img src="'+src+'" alt="'+esc(photo.name)+'" style="display:block;max-width:100%;max-height:650px;object-fit:contain"><figcaption>'+esc(photo.name)+'</figcaption></figure>'}}catch(error){alert('Uma foto não está disponível neste aparelho. Restaure o backup com fotos para gerar o orçamento completo.');return}
+ modal(`<div id="printArea"><div style="border-top:12px solid #c51f1f;padding-top:12px"><h1 style="margin:0;color:#c51f1f">JSO — CONSTRUÇÕES E REFORMAS</h1><b>A Construtora do Povo</b><hr><h2>ORÇAMENTO</h2><p><b>Cliente:</b> ${esc(q.cliente)}<br><b>Data:</b> ${esc(q.data)}<br><b>Endereço:</b> ${esc(q.endereco)}</p><table><thead><tr><th>Serviço</th><th>Qtd.</th><th>Unitário</th><th>Total</th></tr></thead><tbody>${q.items.map(x=>{const unit=x.valorFinal??x.valor;return `<tr><td>${esc(x.descricao)}${x.dificuldade?`<br><small>${esc(difficultyName[x.dificuldade]||'Normal')}</small>`:''}</td><td>${esc(x.qtd)} ${esc(x.unidade||'')}</td><td>${money(unit)}</td><td>${money(Math.round(x.qtd*unit*100)/100)}</td></tr>`}).join('')}</tbody></table><h2 style="text-align:right">Total: ${money(q.total)}</h2><p><b>Prazo:</b> ${esc(q.prazo)}<br><b>Pagamento:</b> ${esc(q.pagamento)}</p><p>${esc(q.obs)}</p>${photoHTML?`<h2>Fotos do orçamento</h2>${photoHTML}`:''}<br><p>____________________________________<br>Cliente: ${esc(q.cliente)}</p><p>____________________________________<br>Construtora JSO</p></div></div><div class="actions no-print"><button class="btn" data-action="print">Gerar / salvar PDF</button><button class="btn alt" data-action="close">Fechar</button></div>`)}
 function backup(){document.querySelector('#view').innerHTML=`<h1>Backup dos dados</h1><div class="panel"><p>Os dados ficam apenas neste aparelho e navegador. Exporte um backup regularmente e guarde o arquivo em local seguro. Fotos das obras e comprovantes também entram no backup. Se apagar os dados do Safari, você precisará importar o backup.</p><div class="actions"><button class="btn" data-action="backup-export">Exportar backup</button><label class="btn alt">Importar backup<input type="file" accept=".json" style="display:none" data-action="backup-import"></label></div></div>`}
 function attachmentDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open('jso_comprovantes',1);request.onupgradeneeded=()=>request.result.createObjectStore('arquivos',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
 async function attachmentOperation(mode,operation){const database=await attachmentDB();return new Promise((resolve,reject)=>{const tx=database.transaction('arquivos',mode);let result;try{const req=operation(tx.objectStore('arquivos'));req.onsuccess=()=>{result=req.result};req.onerror=()=>reject(req.error);tx.oncomplete=()=>{database.close();resolve(result)};tx.onerror=()=>{database.close();reject(tx.error)}}catch(e){database.close();reject(e)}})}
@@ -388,4 +392,44 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 
 
 
+
+
+function setupQuotePhotos(photos){
+ const container=document.querySelector('#quote-photos'),status=document.querySelector('#quote-photo-status'),saveButton=document.querySelector('#saveQ');
+ const inputs=[document.querySelector('#quote-camera'),document.querySelector('#quote-gallery')];
+ async function render(){
+  container.innerHTML='';
+  for(const photo of photos){
+   const figure=document.createElement('div');figure.className='work-photo';
+   const image=document.createElement('img');image.alt=photo.name;image.style.maxWidth='100%';
+   const remove=document.createElement('button');remove.type='button';remove.className='btn danger';remove.textContent='Remover foto';
+   remove.onclick=()=>{photos.splice(photos.indexOf(photo),1);render()};
+   figure.append(image,remove);container.append(figure);
+   try{const item=await getAttachment(photo.id);if(!item)throw Error('missing');const src=await fileDataURL(item.blob);if(figure.isConnected)image.src=src}catch(error){image.alt='Foto indisponível neste aparelho'}
+  }
+ }
+ inputs.forEach(input=>input.onchange=async()=>{
+  const files=[...input.files];if(!files.length)return;
+  saveButton.disabled=true;inputs.forEach(i=>i.disabled=true);status.textContent='Guardando fotos…';
+  try{
+   for(const file of files){
+    const blob=await prepareQuotePhoto(file),id=crypto.randomUUID(),name=file.name||'Foto do orçamento';
+    await putAttachment({id,name,type:blob.type,blob});photos.push({id,name});
+   }
+   status.textContent=photos.length+' foto(s) adicionada(s). Salve o orçamento para confirmar.';
+  }catch(error){status.textContent='Não foi possível adicionar uma foto. Tente usar uma imagem JPG ou PNG e confira o espaço do aparelho.'}
+  finally{input.value='';if(saveButton.isConnected){saveButton.disabled=false;inputs.forEach(i=>i.disabled=false);await render()}}
+ });
+ render();
+}
+async function prepareQuotePhoto(file){
+ const url=URL.createObjectURL(file);
+ try{
+  const image=new Image();await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=url});
+  const scale=Math.min(1,1600/Math.max(image.naturalWidth,image.naturalHeight));
+  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));
+  const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);
+  return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('image')), 'image/jpeg',0.8));
+ }finally{URL.revokeObjectURL(url)}
+}
 
