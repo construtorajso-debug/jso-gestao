@@ -17,12 +17,13 @@ function reportView(index = selectedReportIndex) {
     return;
   }
   const relatorio = effectiveReport(obra);
+  const services = typeof jsoServiceSummary === 'function' ? jsoServiceSummary(obra) : null;
   const hasDiary = diaryEntries(obra).length > 0;
   view.innerHTML = `<div class="title"><h1>Situação da obra</h1></div><div class="panel report-panel">
     <label>Escolha a obra<select id="report-work">${db.obras.map((o,i)=>`<option value="${i}" ${i===selectedReportIndex?'selected':''}>${esc(o['Cliente/Obra']||'Obra sem nome')}</option>`).join('')}</select></label>
     <div class="formgrid report-fields">
       <label>Etapa atual<input id="report-stage" value="${esc(relatorio.etapa)}" placeholder="Ex.: Alvenaria do primeiro pavimento"></label>
-      <label>Percentual executado<input id="report-percent" type="number" min="0" max="100" value="${esc(relatorio.percentual)}" placeholder="0 a 100"></label>
+      <label>Percentual executado<input id="report-percent" type="number" min="0" max="100" step="0.1" value="${esc(services ? services.percent : relatorio.percentual)}" ${services?'readonly':''} placeholder="0 a 100"></label>
       <label class="full">Serviços realizados<textarea id="report-done" ${hasDiary?'readonly':''} placeholder="Descreva o que já foi feito">${esc(hasDiary?diarySummary(obra):relatorio.realizados)}</textarea></label>
       ${hasDiary?`<label class="full">Complemento dos serviços (opcional)<textarea id="report-manual-done">${esc(obra.relatorio?.realizados)}</textarea></label><p class="full muted">Os serviços acima incluem automaticamente o Diário de Obra. Edite os registros no diário para corrigir datas, serviços ou fotos.</p>`:''}
       <label class="full">Próximas etapas<textarea id="report-next" placeholder="Descreva os próximos serviços">${esc(relatorio.proximas)}</textarea></label>
@@ -33,6 +34,7 @@ function reportView(index = selectedReportIndex) {
     <div id="report-result" class="report-result" aria-live="polite"></div>
   </div>${diaryEntries(obra).length?`<section class="panel"><h2>Fotos do diário</h2><div class="work-photos">${diaryEntries(obra).flatMap(e=>(e.fotos||[]).map(f=>diaryPhotoCard(f))).join('')||'<p>Nenhuma foto no diário.</p>'}</div></section>`:''}`;
   hydrateDiaryPhotos();
+  if (services) document.querySelector('.report-panel').insertAdjacentHTML('afterend', jsoTrackingHTML(obra));
 }
 function saveReport() {
   const obra = db.obras[selectedReportIndex];
@@ -144,11 +146,24 @@ async function buildReportPDF(obra) {
   line(`Início: ${obra['Data início']||'-'}    Status: ${obra.Status||'-'}`);
   section('Andamento');
   const r=effectiveReport(obra);
+  const services=typeof jsoServiceSummary==='function'?jsoServiceSummary(obra):null;
+  if(services)r.percentual=services.percent;
   line(`Etapa atual: ${r.etapa||'Não informada'}`);
   line(`Executado: ${r.percentual===''||r.percentual==null?'Não informado':r.percentual+'%'}`);
   line('Serviços realizados:',{font:bold,gap:2});line(r.realizados||'Não informados.',{indent:12});
   line('Próximas etapas:',{font:bold,gap:2});line(r.proximas||'Não informadas.',{indent:12});
   if(r.observacoes){line('Observações:',{font:bold,gap:2});line(r.observacoes,{indent:12})}
+  if(services){
+    section('Acompanhamento dos serviços contratados');
+    line(`${services.done.length} de ${services.rows.length} serviços concluídos. Andamento: ${services.percent.toLocaleString('pt-BR')}%.`);
+    line('Média das porcentagens dos serviços, com o mesmo peso para cada serviço.',{size:10,color:gray});
+    line('Serviços concluídos:',{font:bold,gap:2});
+    if(!services.done.length)line('Nenhum serviço concluído.',{indent:12});
+    services.done.forEach(s=>line(`- ${s.group?s.group+' - ':''}${s.name}`,{indent:12,size:10,gap:1}));
+    line('Serviços pendentes ou em andamento:',{font:bold,gap:2});
+    if(!services.pending.length)line('Todos os serviços concluídos.',{indent:12});
+    services.pending.forEach(s=>line(`- ${s.group?s.group+' - ':''}${s.name} (${progressRatio(s).toLocaleString('pt-BR',{maximumFractionDigits:1})}%)`,{indent:12,size:10,gap:1}));
+  }
   const name=obra['Cliente/Obra'];
   const extras=db.extras.filter(x=>x.Obra===name&&x['Aprovado?']!=='Não');
   const recebimentos=db.recebimentos.filter(x=>x.Obra===name);
