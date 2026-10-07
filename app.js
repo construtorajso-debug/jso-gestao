@@ -27,6 +27,10 @@ function choiceField(kind,c,editIndex){
  const previous=editIndex===null?(c==='Status'?'Andamento':''):String(db[kind][editIndex][c]??'');
  const options=c==='Obra'?[...new Set(db.obras.map(o=>o['Cliente/Obra']).filter(Boolean))]:formChoices[c];
  if(kind==='obras'&&c==='Cliente/Obra')return clientPicker(id,previous,'Cliente','f_Endereco_do_cliente','f_Celular_do_cliente');
+ if(kind==='colaboradores'&&c==='Colaborador'){
+  const people=db.equipe||[],selected=people.findIndex(p=>p.nome===previous);
+  return `<label>Colaborador<select id="worker-picker"><option value="">Escolha um colaborador</option>${people.map((p,i)=>`<option value="${i}" ${i===selected?'selected':''}>${esc(p.nome)}</option>`).join('')}<option value="other" ${previous&&selected<0?'selected':''}>Digitar outro nome</option></select><input id="${id}" value="${esc(previous)}" placeholder="Nome do colaborador" ${previous&&selected<0?'':'hidden'}></label>`;
+ }
  if(options){
   const values=[...options];if(previous&&!values.includes(previous))values.push(previous);
   return `<label>${esc(c)}<select id="${id}" ${c==='Obra'?'required':''}><option value="">Escolha ${c==='Obra'?'uma obra':'uma opção'}</option>${values.map(v=>`<option value="${esc(v)}" ${v===previous?'selected':''}>${esc(v)}</option>`).join('')}</select>${c==='Obra'&&!values.length?'<small>Cadastre a obra na aba Obras primeiro.</small>':''}</label>`;
@@ -188,11 +192,24 @@ function form(k,editIndex=null,returnKind=null){
  if(k==='recebimentos'&&editIndex===null&&receiptsWork!==null)document.querySelector('#f_Obra').value=receiptsWork;
  if(k==='gastos'&&editIndex===null&&expensesWork!==null)document.querySelector('#f_Obra').value=expensesWork;
  if(editIndex!==null)cols.filter(c=>c!=='Obra'&&!formChoices[c]&&!isCurrencyField(k,c)).forEach(c=>{document.querySelector('#f_'+slug(c)).value=db[k][editIndex][c]??''});
+ if(k==='colaboradores')document.querySelector('#worker-picker').addEventListener('change',event=>{
+  const value=event.target.value,input=document.querySelector('#f_Colaborador');
+  input.hidden=value!=='other';
+  if(value==='other'){input.value='';input.focus();return}
+  const person=value===''?null:db.equipe[Number(value)];
+  input.value=person?.nome||'';
+  if(person){
+   const role=document.querySelector('#f_Funcao');
+   if(person.funcao&&![...role.options].some(o=>o.value===person.funcao))role.add(new Option(person.funcao,person.funcao));
+   role.value=person.funcao||'Outro';document.querySelector('#f_Diaria').value=currencyNumber(person.diaria);
+  }
+ });
  document.querySelector('#ok').addEventListener('click',async()=>{
   const button=document.querySelector('#ok');button.disabled=true;
   try{
    const obraField=document.querySelector('#f_Obra');if(obraField&&!obraField.value){obraField.reportValidity();button.disabled=false;return;}
    const o={};cols.forEach(c=>{const value=document.querySelector('#f_'+slug(c)).value;o[c]=isCurrencyField(k,c)?parseCurrency(value):value});
+   if(k==='colaboradores'&&!o.Colaborador.trim()){alert('Escolha um colaborador ou digite o nome.');button.disabled=false;return;}
    if(k==='obras'&&!o['Cliente/Obra'].trim()){document.querySelector('#f_Cliente_Obra').focus();button.disabled=false;return;}
    if(k==='obras'){const c=selectedClient('f_Cliente_Obra');if(!c){button.disabled=false;return}o.clienteId=c.id;}
    if(k==='gastos'){
