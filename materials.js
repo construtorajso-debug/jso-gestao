@@ -133,3 +133,30 @@ async function buildMaterialPDF(lista){
  page.drawText('Lista sem valores - somente materiais e quantidades',{x:left,y:49,size:9,font:regular,color:gray});
  return await pdf.save();
 }
+
+
+/* Lista de Flávia: teto drywall, área estimada 16,42 m². */
+(function(){
+ const key='lista-flavia-drywall-20261007';
+ function adicionarListaFlavia(){
+  if((db.importacoesListas||[]).includes(key))return;
+  const snapshot=JSON.stringify(db);
+  try{
+   db.clientes??=[];db.listasMateriais??=[];db.importacoesListas??=[];
+   let client=findClient('Flávia');
+   if(!client){client={id:crypto.randomUUID(),nome:'Flávia',endereco:'',celular:''};db.clientes.push(client)}
+   if(!db.listasMateriais.some(l=>l.id===key))db.listasMateriais.push({
+    id:key,clienteId:client.id,cliente:client.nome,obra:'',data:'2026-10-07',
+    obs:'Teto drywall: área estimada 16,42 m². Sala 3,60 × 5 m; descontado vão da escada 1,10 × 3 m; acrescentada faixa 2,15 × 0,80 m. Parte com X sem teto. Quantidades estimadas com sobra para recortes. Comprimento dos tirantes conforme rebaixamento. Sem pintura ou fechamento vertical na borda da escada.',
+    itens:[{"material":"Chapa drywall ST 12,5 mm - 1,20 × 1,80 m","quantidade":"9 chapas"},{"material":"Perfil F-530 de 3 m","quantidade":"12 barras"},{"material":"Cantoneira de perímetro de 3 m","quantidade":"8 barras"},{"material":"União para perfil F-530","quantidade":"12 unidades"},{"material":"Conjunto tirante + regulador para F-530 (comprimento conforme rebaixamento)","quantidade":"30 conjuntos"},{"material":"Fixação dos tirantes adequada à laje","quantidade":"30 unidades"},{"material":"Buchas e parafusos para cantoneiras nas paredes","quantidade":"50 conjuntos"},{"material":"Parafuso TN25 para chapas","quantidade":"500 unidades"},{"material":"Parafuso metal/metal TRPF13","quantidade":"100 unidades"},{"material":"Massa própria para juntas de drywall","quantidade":"10 kg"},{"material":"Fita de papel para juntas","quantidade":"1 rolo de 50 m"},{"material":"Lixa 180 ou 220","quantidade":"5 folhas"}]
+   });
+   db.importacoesListas.push(key);save();
+  }catch(error){db=JSON.parse(snapshot);console.error('Não foi possível salvar a lista de Flávia.',error)}
+ }
+ function abrirListaFlavia(){
+  adicionarListaFlavia();
+  if(new URLSearchParams(location.search).get('lista')==='flavia20261007')show('materiais');
+ }
+ abrirListaFlavia();window.addEventListener('pageshow',abrirListaFlavia);
+})();
+
