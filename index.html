@@ -179,3 +179,28 @@ function jsoImportGustavo(){
 
 
 
+
+<script>
+/* Lista de Thiago: pedras naturais para 100 m², 07/10/2026. */
+(function(){
+const revision='lista-thiago-pedras-naturais-20261007';
+if((db.importacoesListas||[]).includes(revision))return;
+const lista=(db.listasMateriais||[]).find(l=>l.id==='lista-thiago-2026-09-30');
+if(!lista)return;
+const snapshot=JSON.stringify(db);
+try{
+const itens=lista.itens.map(i=>({...i}));
+const index=itens.findIndex(i=>materialKey(i.material)==='textura externa'||materialKey(i.material)==='tinta emborrachada');
+const novos=[
+{material:'Textura de pedras naturais - referência LT Shine Grannistone (100 m²; margem 10%)',quantidade:'11 baldes de 25 kg (275 kg)'},
+{material:'Primer para pedras naturais - referência Grannistone Primer (2 demãos)',quantidade:'17 embalagens de 4 kg (68 kg)'},
+{material:'Resina incolor - referência LT Shine 5 em 1 (2 demãos)',quantidade:'1 balde de 18 L'}
+];
+if(index>=0)itens.splice(index,1,...novos);else itens.push(...novos);
+lista.itens=itens;
+db.importacoesListas??=[];db.importacoesListas.push(revision);save();
+}catch(error){db=JSON.parse(snapshot);console.error('Não foi possível atualizar a lista de Thiago.',error)}
+})();
+function abrirListaThiago(){if(new URLSearchParams(location.search).get('lista')==='thiago20261007')show('materiais')}
+abrirListaThiago();window.addEventListener('pageshow',abrirListaThiago);
+</script>
