@@ -8,20 +8,43 @@ function clearPreparedReport() {
   preparedReportFile = null;
 }
 // Relatório aprovado em 09/10/2026: preservar o PDF original, sem recriar layout.
-const gustavoReportPDF = 'Gustavo_Situacao_2026-10-09.pdf';
+const gustavoReportPDF = 'Gustavo_Situacao_2026-10-09_extra.pdf';
 function isGustavoReport(obra) {
   const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
   const exact = db.obras.filter(o => norm(o['Cliente/Obra']) === 'gustavo');
   const candidates = exact.length ? exact : db.obras.filter(o => /^gustavo\b/.test(norm(o['Cliente/Obra'])));
   return candidates.length === 1 && candidates[0] === obra;
 }
+function importGustavoCompletedExtra() {
+  const key = 'gustavo-extra-alvenaria-emboco-1350-20261009';
+  if ((db.importacoesAcompanhamento || []).includes(key)) return false;
+  const obra = db.obras.find(isGustavoReport);
+  if (!obra) return false;
+  const work = obra['Cliente/Obra'], snapshot = JSON.stringify(db);
+  try {
+    db.extras ??= [];
+    db.andamentoServicos ??= [];
+    db.importacoesAcompanhamento ??= [];
+    const description = 'Alvenaria e emboço adicionais';
+    const equivalent = db.extras.some(x => x.id === key || (x.Obra === work && x['Serviço adicional'] === description && Number(x.Valor) === 1350));
+    if (!equivalent) db.extras.push({id:key,Data:'2026-10-09',Obra:work,'Serviço adicional':description,Quantidade:1,Valor:1350,'Aprovado?':'Sim',Observação:'Concluído (100%). Confirmação do responsável em 09/10/2026; data de execução não informada.',statusExecucao:'Concluído'});
+    if (!db.andamentoServicos.some(x => x.id === key)) db.andamentoServicos.push({id:key,work,name:description,total:1,unit:'serviço',group:'Serviço extra',contractValue:1350,logs:[{id:key+'-conclusao',date:'2026-10-09',quantity:1,note:'Extra concluído, confirmado pelo responsável em 09/10/2026.'}]});
+    db.importacoesAcompanhamento.push(key);
+    save();
+    return true;
+  } catch (error) {
+    db = JSON.parse(snapshot);
+    console.error('Não foi possível salvar o serviço extra do Gustavo.', error);
+    return false;
+  }
+}
 function approvedGustavoReportView(obra) {
   document.querySelector('#view').innerHTML = `<div class="title"><h1>Situação da obra</h1></div><div class="panel report-panel">
     <label>Escolha a obra<select id="report-work">${db.obras.map((o,i)=>`<option value="${i}" ${i===selectedReportIndex?'selected':''}>${esc(o['Cliente/Obra']||'Obra sem nome')}</option>`).join('')}</select></label>
     <h2>${esc(obra['Cliente/Obra'])} — relatório aprovado</h2>
-    <p>Atualizado em 09/10/2026. Textura do muro da fachada pendente.</p>
-    <div class="cards"><div class="card"><small>Serviços feitos</small><strong>R$ 20.400,00</strong><span>63,92%</span></div><div class="card"><small>Serviços pendentes</small><strong>R$ 11.515,00</strong><span>36,08%</span></div><div class="card"><small>Total contratado</small><strong>R$ 31.915,00</strong></div></div>
-    <div class="actions" style="margin:18px 0"><a class="btn" href="${gustavoReportPDF}" target="_blank" rel="noopener">Abrir PDF completo</a><a class="btn alt" href="${gustavoReportPDF}" download="Gustavo_Situacao_2026-10-09.pdf">Salvar PDF</a><button class="btn yellow" data-action="report-generate">Preparar envio do PDF</button></div>
+    <p>Atualizado em 09/10/2026. Extra concluído: alvenaria e emboço adicionais, R$ 1.350,00. Textura do muro da fachada pendente.</p>
+    <div class="cards"><div class="card"><small>Serviços feitos</small><strong>R$ 21.750,00</strong><span>65,38%</span></div><div class="card"><small>Serviços pendentes</small><strong>R$ 11.515,00</strong><span>34,62%</span></div><div class="card"><small>Total contratado</small><strong>R$ 33.265,00</strong></div></div>
+    <div class="actions" style="margin:18px 0"><a class="btn" href="${gustavoReportPDF}" target="_blank" rel="noopener">Abrir PDF completo</a><a class="btn alt" href="${gustavoReportPDF}" download="Gustavo_Situacao_2026-10-09_extra.pdf">Salvar PDF</a><button class="btn yellow" data-action="report-generate">Preparar envio do PDF</button></div>
     <div id="report-result" class="report-result" aria-live="polite"></div>
     <iframe title="PDF de situação da obra do Gustavo" src="${gustavoReportPDF}" style="width:100%;height:75vh;border:1px solid #e3e6eb;margin-top:16px"></iframe>
   </div>`;
@@ -220,4 +243,11 @@ async function buildReportPDF(obra) {
   ensure(35);line('Construtora JSO - Construções e Reformas',{font:bold,size:10,color:gray});
   return await pdf.save();
 }
+
+(function () {
+  const originalShow = show;
+  show = function (kind) { importGustavoCompletedExtra(); return originalShow(kind); };
+  importGustavoCompletedExtra();
+  window.addEventListener('pageshow', importGustavoCompletedExtra);
+})();
 

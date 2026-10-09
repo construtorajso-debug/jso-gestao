@@ -1,5 +1,5 @@
-const CACHE = 'jso-offline-v45-gustavo-pdf';
-const CORE = ['./index.html', './style.css?v=37', './app.js?v=44', './clients.js', './quote_catalog.js', './report.js?v=20261009gustavo', './diary.js', './materials.js', './pdf-lib.min.js', './Gustavo_Situacao_2026-10-09.pdf'];
+const CACHE = 'jso-offline-v46-gustavo-extra';
+const CORE = ['./index.html', './style.css?v=37', './app.js?v=44', './clients.js', './quote_catalog.js', './report.js?v=20261009gustavoextra', './diary.js', './materials.js', './pdf-lib.min.js', './Gustavo_Situacao_2026-10-09_extra.pdf'];
 const EXTRA = ['./', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', event => {
