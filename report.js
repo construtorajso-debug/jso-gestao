@@ -7,6 +7,25 @@ function clearPreparedReport() {
   preparedReportURL = null;
   preparedReportFile = null;
 }
+// Relatório aprovado em 09/10/2026: preservar o PDF original, sem recriar layout.
+const gustavoReportPDF = 'Gustavo_Situacao_2026-10-09.pdf';
+function isGustavoReport(obra) {
+  const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  const exact = db.obras.filter(o => norm(o['Cliente/Obra']) === 'gustavo');
+  const candidates = exact.length ? exact : db.obras.filter(o => /^gustavo\b/.test(norm(o['Cliente/Obra'])));
+  return candidates.length === 1 && candidates[0] === obra;
+}
+function approvedGustavoReportView(obra) {
+  document.querySelector('#view').innerHTML = `<div class="title"><h1>Situação da obra</h1></div><div class="panel report-panel">
+    <label>Escolha a obra<select id="report-work">${db.obras.map((o,i)=>`<option value="${i}" ${i===selectedReportIndex?'selected':''}>${esc(o['Cliente/Obra']||'Obra sem nome')}</option>`).join('')}</select></label>
+    <h2>${esc(obra['Cliente/Obra'])} — relatório aprovado</h2>
+    <p>Atualizado em 09/10/2026. Textura do muro da fachada pendente.</p>
+    <div class="cards"><div class="card"><small>Serviços feitos</small><strong>R$ 20.400,00</strong><span>63,92%</span></div><div class="card"><small>Serviços pendentes</small><strong>R$ 11.515,00</strong><span>36,08%</span></div><div class="card"><small>Total contratado</small><strong>R$ 31.915,00</strong></div></div>
+    <div class="actions" style="margin:18px 0"><a class="btn" href="${gustavoReportPDF}" target="_blank" rel="noopener">Abrir PDF completo</a><a class="btn alt" href="${gustavoReportPDF}" download="Gustavo_Situacao_2026-10-09.pdf">Salvar PDF</a><button class="btn yellow" data-action="report-generate">Preparar envio do PDF</button></div>
+    <div id="report-result" class="report-result" aria-live="polite"></div>
+    <iframe title="PDF de situação da obra do Gustavo" src="${gustavoReportPDF}" style="width:100%;height:75vh;border:1px solid #e3e6eb;margin-top:16px"></iframe>
+  </div>`;
+}
 function reportView(index = selectedReportIndex) {
   clearPreparedReport();
   selectedReportIndex = Math.max(0, Math.min(index, db.obras.length - 1));
@@ -16,6 +35,7 @@ function reportView(index = selectedReportIndex) {
     view.innerHTML = '<h1>Situação da obra</h1><div class="panel"><p>Cadastre uma obra na aba Obras para criar o relatório do cliente.</p></div>';
     return;
   }
+  if (isGustavoReport(obra)) { approvedGustavoReportView(obra); return; }
   const relatorio = effectiveReport(obra);
   const services = typeof jsoServiceSummary === 'function' ? jsoServiceSummary(obra) : null;
   const hasDiary = diaryEntries(obra).length > 0;
@@ -39,6 +59,7 @@ function reportView(index = selectedReportIndex) {
 function saveReport() {
   const obra = db.obras[selectedReportIndex];
   if (!obra) return false;
+  if (isGustavoReport(obra)) return true;
   const percentual = document.querySelector('#report-percent').value.trim();
   if (percentual !== '' && (Number(percentual) < 0 || Number(percentual) > 100)) {
     alert('Informe um percentual de 0 a 100.');
@@ -104,6 +125,11 @@ async function photoAsJpeg(blob) {
   return jpeg?new Uint8Array(await jpeg.arrayBuffer()):null;
 }
 async function buildReportPDF(obra) {
+  if (isGustavoReport(obra)) {
+    const response = await fetch(gustavoReportPDF);
+    if (!response.ok) throw new Error('PDF indisponível');
+    return new Uint8Array(await response.arrayBuffer());
+  }
   const {PDFDocument,StandardFonts,rgb} = PDFLib;
   const pdf = await PDFDocument.create();
   pdf.setTitle(`Situação da obra - ${pdfText(obra['Cliente/Obra'])}`);
@@ -194,3 +220,4 @@ async function buildReportPDF(obra) {
   ensure(35);line('Construtora JSO - Construções e Reformas',{font:bold,size:10,color:gray});
   return await pdf.save();
 }
+
