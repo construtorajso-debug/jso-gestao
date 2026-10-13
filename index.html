@@ -209,6 +209,6 @@ abrirListaThiago();window.addEventListener('pageshow',abrirListaThiago);
 
 
 <script>
-(function(){function openFlavia(){if(new URLSearchParams(location.search).get('situacao')!=='flavia')return;importFlaviaServiceList();const norm=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().toLowerCase();const i=db.obras.findIndex(o=>norm(o['Cliente/Obra'])==='flavia');show('situacao');if(i>=0)reportView(i)}openFlavia();window.addEventListener('pageshow',openFlavia)})();
+(function(){function openFlavia(){if(new URLSearchParams(location.search).get('situacao')!=='flavia')return;importFlaviaServiceList();const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();const i=db.obras.findIndex(o=>norm(o['Cliente/Obra'])==='flavia');show('situacao');if(i>=0)reportView(i)}openFlavia();window.addEventListener('pageshow',openFlavia)})();
 </script>
 
