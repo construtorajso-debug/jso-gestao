@@ -59,7 +59,6 @@ function reportView(index = selectedReportIndex) {
     view.innerHTML = '<h1>Situação da obra</h1><div class="panel"><p>Cadastre uma obra na aba Obras para criar o relatório do cliente.</p></div>';
     return;
   }
-  if (isGustavoReport(obra)) { approvedGustavoReportView(obra); return; }
   const relatorio = effectiveReport(obra);
   const services = typeof jsoServiceSummary === 'function' ? jsoServiceSummary(obra) : null;
   const hasDiary = diaryEntries(obra).length > 0;
@@ -78,12 +77,11 @@ function reportView(index = selectedReportIndex) {
     <div id="report-result" class="report-result" aria-live="polite"></div>
   </div>${diaryEntries(obra).length?`<section class="panel"><h2>Fotos do diário</h2><div class="work-photos">${diaryEntries(obra).flatMap(e=>(e.fotos||[]).map(f=>diaryPhotoCard(f))).join('')||'<p>Nenhuma foto no diário.</p>'}</div></section>`:''}`;
   hydrateDiaryPhotos();
-  document.querySelector('.report-panel').insertAdjacentHTML('afterend', editableServiceHTML(obra));
+  document.querySelector('.report-panel').insertAdjacentHTML('afterend', commonReportSummaryHTML(obra)+editableServiceHTML(obra)+(isGustavoReport(obra)?'<section class="panel"><h2>Relatório aprovado em 09/10/2026</h2><p>Consulte também o documento aprovado naquela data.</p><a class="btn alt" href="'+gustavoReportPDF+'" target="_blank" rel="noopener">Abrir PDF aprovado</a></section>':''));
 }
 function saveReport() {
   const obra = db.obras[selectedReportIndex];
   if (!obra) return false;
-  if (isGustavoReport(obra)) return true;
   const percentual = document.querySelector('#report-percent').value.trim();
   if (percentual !== '' && (Number(percentual) < 0 || Number(percentual) > 100)) {
     alert('Informe um percentual de 0 a 100.');
@@ -149,11 +147,6 @@ async function photoAsJpeg(blob) {
   return jpeg?new Uint8Array(await jpeg.arrayBuffer()):null;
 }
 async function buildReportPDF(obra) {
-  if (isGustavoReport(obra)) {
-    const response = await fetch(gustavoReportPDF);
-    if (!response.ok) throw new Error('PDF indisponível');
-    return new Uint8Array(await response.arrayBuffer());
-  }
   const {PDFDocument,StandardFonts,rgb} = PDFLib;
   const pdf = await PDFDocument.create();
   pdf.setTitle(`Situação da obra - ${pdfText(obra['Cliente/Obra'])}`);
@@ -210,9 +203,12 @@ async function buildReportPDF(obra) {
     line('Serviços concluídos:',{font:bold,gap:2});
     if(!services.done.length)line('Nenhum serviço concluído.',{indent:12});
     services.done.forEach(s=>line(`- ${s.group?s.group+' - ':''}${s.name}`,{indent:12,size:10,gap:1}));
-    line('Serviços pendentes ou em andamento:',{font:bold,gap:2});
-    if(!services.pending.length)line('Todos os serviços concluídos.',{indent:12});
-    services.pending.forEach(s=>line(`- ${s.group?s.group+' - ':''}${s.name} (${progressRatio(s).toLocaleString('pt-BR',{maximumFractionDigits:1})}% - ${serviceExecutionStatus(s)})`,{indent:12,size:10,gap:1}));
+    for(const status of ['Em andamento','Não feito']){
+      line(status+':',{font:bold,gap:2});
+      const rows=services.rows.filter(s=>serviceExecutionStatus(s)===status);
+      if(!rows.length)line('Nenhum serviço nesta situação.',{indent:12});
+      rows.forEach(s=>line(`- ${s.group?s.group+' - ':''}${s.name} (${progressRatio(s).toLocaleString('pt-BR',{maximumFractionDigits:1})}%)`,{indent:12,size:10,gap:1}));
+    }
   }
   const name=obra['Cliente/Obra'];
   const extras=db.extras.filter(x=>x.Obra===name&&x['Aprovado?']!=='Não');
@@ -258,7 +254,7 @@ function serviceExecutionStatus(s) {
 }
 function editableServiceHTML(obra) {
   const rows=(db.andamentoServicos||[]).filter(s=>s.work===obra['Cliente/Obra']);
-  return '<section class="panel"><h2>Situação dos serviços</h2><p>Marque cada serviço e acompanhe a execução. Em andamento: informe a porcentagem executada.</p><div class="actions"><button class="btn" data-tracking-add>+ Adicionar serviço</button><button class="btn alt" data-tracking-import>Usar serviços do orçamento</button></div>'+rows.map(s=>'<article class="progress-row"><small>'+esc(s.group||'Serviço')+'</small><br><b>'+esc(s.name)+'</b><label>Situação<select data-tracking-status="'+esc(s.id)+'">'+['Não feito','Em andamento','Feito'].map(v=>'<option '+(v===serviceExecutionStatus(s)?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+(serviceExecutionStatus(s)==='Em andamento'?'<label>Percentual executado<input type="number" min="0" max="99.9" step="0.1" data-tracking-percent="'+esc(s.id)+'" value="'+progressRatio(s)+'"></label>':'')+'</article>').join('')+(!rows.length?'<p>Nenhum serviço cadastrado para esta obra.</p>':'')+'</section>';
+  return '<section class="panel"><h2>Situação dos serviços</h2><p>Marque cada serviço e acompanhe a execução. Em andamento: informe a porcentagem executada.</p><div class="actions"><button class="btn" data-tracking-add>+ Adicionar serviço</button><button class="btn alt" data-tracking-import>Usar serviços do orçamento</button></div>'+rows.map(s=>'<article class="progress-row"><small>'+esc(s.group||'Serviço')+'</small><br><b style="display:block;margin:6px 0">'+esc(s.name)+'</b><label style="display:block">Situação<select data-tracking-status="'+esc(s.id)+'">'+['Não feito','Em andamento','Feito'].map(v=>'<option '+(v===serviceExecutionStatus(s)?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+(serviceExecutionStatus(s)==='Em andamento'?'<label>Percentual executado<input type="number" min="0" max="99.9" step="0.1" data-tracking-percent="'+esc(s.id)+'" value="'+progressRatio(s)+'"></label>':'')+'</article>').join('')+(!rows.length?'<p>Nenhum serviço cadastrado para esta obra.</p>':'')+'</section>';
 }
 function trackingRefresh(){save();reportView(selectedReportIndex)}
 document.addEventListener('change',event=>{
@@ -325,4 +321,20 @@ function importFlaviaServiceList(){
  importFlaviaServiceList();
  window.addEventListener('pageshow',importFlaviaServiceList);
 })();
+
+
+function commonReportSummaryHTML(obra){
+ const rows=(db.andamentoServicos||[]).filter(s=>s.work===obra['Cliente/Obra']);
+ const count=status=>rows.filter(s=>serviceExecutionStatus(s)===status).length;
+ const percent=rows.length?rows.reduce((sum,s)=>sum+progressRatio(s),0)/rows.length:null;
+ const extras=(db.extras||[]).filter(x=>x.Obra===obra['Cliente/Obra']&&x['Aprovado?']!=='Não').reduce((sum,x)=>sum+num(x.Valor),0);
+ const total=num(obra['Valor inicial'])+extras;
+ const received=(db.recebimentos||[]).filter(x=>x.Obra===obra['Cliente/Obra']).reduce((sum,x)=>sum+num(x['Valor recebido']),0);
+ return '<section class="panel"><h2>Acompanhamento — '+esc(obra['Cliente/Obra'])+'</h2><div class="cards">'+
+ ['Feito','Em andamento','Não feito'].map((status,i)=>'<div class="card" style="border-top:4px solid '+['#238d68','#ce8a12','#c51f1f'][i]+'"><small>'+status+'</small><strong>'+count(status)+'</strong><span>serviços</span></div>').join('')+
+ '<div class="card"><small>Total de serviços</small><strong>'+rows.length+'</strong></div></div>'+
+ (percent===null?'<p>Adicione os serviços ou importe os itens do orçamento para acompanhar a execução.</p>':
+ '<p><b>'+percent.toLocaleString('pt-BR',{maximumFractionDigits:1})+'% executado</b></p><div class="jso-chart-track" role="progressbar" aria-label="Conclusão dos serviços" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+percent+'"><span class="jso-chart-bar" style="left:0;width:'+percent+'%;background:#238d68"></span></div><p class="muted">Média da execução dos serviços. Cada serviço tem o mesmo peso.</p>')+
+ '<div class="cards"><div class="card"><small>Total contratado</small><strong>'+money(total)+'</strong></div><div class="card"><small>Recebido do cliente</small><strong>'+money(received)+'</strong></div><div class="card"><small>Saldo a receber</small><strong>'+money(total-received)+'</strong></div></div></section>';
+}
 
