@@ -77,7 +77,7 @@ function reportView(index = selectedReportIndex) {
     <div id="report-result" class="report-result" aria-live="polite"></div>
   </div>${diaryEntries(obra).length?`<section class="panel"><h2>Fotos do diário</h2><div class="work-photos">${diaryEntries(obra).flatMap(e=>(e.fotos||[]).map(f=>diaryPhotoCard(f))).join('')||'<p>Nenhuma foto no diário.</p>'}</div></section>`:''}`;
   hydrateDiaryPhotos();
-  if (services) document.querySelector('.report-panel').insertAdjacentHTML('afterend', jsoTrackingHTML(obra));
+  document.querySelector('.report-panel').insertAdjacentHTML('afterend', editableServiceHTML(obra));
 }
 function saveReport() {
   const obra = db.obras[selectedReportIndex];
@@ -211,7 +211,7 @@ async function buildReportPDF(obra) {
     services.done.forEach(s=>line(`- ${s.group?s.group+' - ':''}${s.name}`,{indent:12,size:10,gap:1}));
     line('Serviços pendentes ou em andamento:',{font:bold,gap:2});
     if(!services.pending.length)line('Todos os serviços concluídos.',{indent:12});
-    services.pending.forEach(s=>line(`- ${s.group?s.group+' - ':''}${s.name} (${progressRatio(s).toLocaleString('pt-BR',{maximumFractionDigits:1})}%)`,{indent:12,size:10,gap:1}));
+    services.pending.forEach(s=>line(`- ${s.group?s.group+' - ':''}${s.name} (${progressRatio(s).toLocaleString('pt-BR',{maximumFractionDigits:1})}% - ${serviceExecutionStatus(s)})`,{indent:12,size:10,gap:1}));
   }
   const name=obra['Cliente/Obra'];
   const extras=db.extras.filter(x=>x.Obra===name&&x['Aprovado?']!=='Não');
@@ -250,4 +250,51 @@ async function buildReportPDF(obra) {
   importGustavoCompletedExtra();
   window.addEventListener('pageshow', importGustavoCompletedExtra);
 })();
+
+
+function serviceExecutionStatus(s) {
+  return s.executionStatus || (progressRatio(s)>=100?'Feito':progressRatio(s)>0?'Em andamento':'Não feito');
+}
+function editableServiceHTML(obra) {
+  const rows=(db.andamentoServicos||[]).filter(s=>s.work===obra['Cliente/Obra']);
+  return '<section class="panel"><h2>Situação dos serviços</h2><p>Marque cada serviço e acompanhe a execução. Em andamento: informe a porcentagem executada.</p><div class="actions"><button class="btn" data-tracking-add>+ Adicionar serviço</button><button class="btn alt" data-tracking-import>Usar serviços do orçamento</button></div>'+rows.map(s=>'<article class="progress-row"><b>'+esc(s.name)+'</b><label>Situação<select data-tracking-status="'+esc(s.id)+'">'+['Não feito','Em andamento','Feito'].map(v=>'<option '+(v===serviceExecutionStatus(s)?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+(serviceExecutionStatus(s)==='Em andamento'?'<label>Percentual executado<input type="number" min="0" max="99.9" step="0.1" data-tracking-percent="'+esc(s.id)+'" value="'+progressRatio(s)+'"></label>':'')+'</article>').join('')+(!rows.length?'<p>Nenhum serviço cadastrado para esta obra.</p>':'')+'</section>';
+}
+function trackingRefresh(){save();reportView(selectedReportIndex)}
+document.addEventListener('change',event=>{
+ const el=event.target;
+ if(!el.matches('[data-tracking-status],[data-tracking-percent]'))return;
+ const s=(db.andamentoServicos||[]).find(s=>s.id===(el.dataset.trackingStatus||el.dataset.trackingPercent));if(!s)return;
+ if(el.dataset.trackingStatus){
+  const previous=progressRatio(s);s.executionStatus=el.value;
+  s.executionPercent=el.value==='Feito'?100:el.value==='Não feito'?0:previous>0&&previous<100?previous:0;
+ }else{
+  const value=Number(el.value);if(!el.value.trim()||!Number.isFinite(value)||value<0||value>=100){alert('Informe uma porcentagem de 0 até 99,9. Para concluir, selecione Feito.');el.value=progressRatio(s);return}
+  s.executionPercent=value;
+ }
+ trackingRefresh();
+});
+document.addEventListener('click',event=>{
+ const b=event.target.closest('[data-tracking-add],[data-tracking-import]');if(!b)return;
+ const obra=db.obras[selectedReportIndex];if(!obra)return;
+ db.andamentoServicos??=[];
+ if(b.hasAttribute('data-tracking-add')){
+  modal('<h2>Adicionar serviço — '+esc(obra['Cliente/Obra'])+'</h2><label>Descrição do serviço<input id="tracking-name"></label><div class="actions"><button class="btn" id="tracking-save">Salvar serviço</button><button class="btn alt" data-action="close">Cancelar</button></div>');
+  document.querySelector('#tracking-save').onclick=()=>{
+   const name=document.querySelector('#tracking-name').value.trim();if(!name){alert('Informe o serviço.');return}
+   db.andamentoServicos.push({id:crypto.randomUUID(),work:obra['Cliente/Obra'],name,total:1,unit:'serviço',logs:[]});closeM();trackingRefresh();
+  };
+ }else{
+  const quotes=db.orcamentos.filter(q=>q.clienteId&&q.clienteId===obra.clienteId||q.cliente===obra['Cliente/Obra']);
+  if(!quotes.length){alert('Não há orçamento vinculado a esta obra. Use Adicionar serviço.');return}
+  modal('<h2>Escolha o orçamento</h2><select id="tracking-quote">'+quotes.map((q,i)=>'<option value="'+i+'">'+esc(q.cliente)+' · '+esc(q.data)+' · '+money(q.total)+'</option>').join('')+'</select><div class="actions"><button class="btn" id="tracking-import-save">Adicionar serviços</button><button class="btn alt" data-action="close">Cancelar</button></div>');
+  document.querySelector('#tracking-import-save').onclick=()=>{
+   const q=quotes[Number(document.querySelector('#tracking-quote').value)];let added=0;
+   for(const item of q.items||[]){
+    const name=String(item.descricao||'').trim();if(!name||db.andamentoServicos.some(s=>s.work===obra['Cliente/Obra']&&s.name===name))continue;
+    db.andamentoServicos.push({id:crypto.randomUUID(),work:obra['Cliente/Obra'],name,total:num(item.qtd)||1,unit:item.unidade||'serviço',logs:[],quoteId:q.id});added++;
+   }
+   closeM();trackingRefresh();alert(added+' serviços adicionados. Os serviços existentes foram preservados.');
+  };
+ }
+});
 
