@@ -50,6 +50,7 @@ function approvedGustavoReportView(obra) {
   </div>`;
 }
 function reportView(index = selectedReportIndex) {
+  importFlaviaServiceList();
   clearPreparedReport();
   selectedReportIndex = Math.max(0, Math.min(index, db.obras.length - 1));
   const obra = db.obras[selectedReportIndex];
@@ -257,7 +258,7 @@ function serviceExecutionStatus(s) {
 }
 function editableServiceHTML(obra) {
   const rows=(db.andamentoServicos||[]).filter(s=>s.work===obra['Cliente/Obra']);
-  return '<section class="panel"><h2>Situação dos serviços</h2><p>Marque cada serviço e acompanhe a execução. Em andamento: informe a porcentagem executada.</p><div class="actions"><button class="btn" data-tracking-add>+ Adicionar serviço</button><button class="btn alt" data-tracking-import>Usar serviços do orçamento</button></div>'+rows.map(s=>'<article class="progress-row"><b>'+esc(s.name)+'</b><label>Situação<select data-tracking-status="'+esc(s.id)+'">'+['Não feito','Em andamento','Feito'].map(v=>'<option '+(v===serviceExecutionStatus(s)?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+(serviceExecutionStatus(s)==='Em andamento'?'<label>Percentual executado<input type="number" min="0" max="99.9" step="0.1" data-tracking-percent="'+esc(s.id)+'" value="'+progressRatio(s)+'"></label>':'')+'</article>').join('')+(!rows.length?'<p>Nenhum serviço cadastrado para esta obra.</p>':'')+'</section>';
+  return '<section class="panel"><h2>Situação dos serviços</h2><p>Marque cada serviço e acompanhe a execução. Em andamento: informe a porcentagem executada.</p><div class="actions"><button class="btn" data-tracking-add>+ Adicionar serviço</button><button class="btn alt" data-tracking-import>Usar serviços do orçamento</button></div>'+rows.map(s=>'<article class="progress-row"><small>'+esc(s.group||'Serviço')+'</small><br><b>'+esc(s.name)+'</b><label>Situação<select data-tracking-status="'+esc(s.id)+'">'+['Não feito','Em andamento','Feito'].map(v=>'<option '+(v===serviceExecutionStatus(s)?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+(serviceExecutionStatus(s)==='Em andamento'?'<label>Percentual executado<input type="number" min="0" max="99.9" step="0.1" data-tracking-percent="'+esc(s.id)+'" value="'+progressRatio(s)+'"></label>':'')+'</article>').join('')+(!rows.length?'<p>Nenhum serviço cadastrado para esta obra.</p>':'')+'</section>';
 }
 function trackingRefresh(){save();reportView(selectedReportIndex)}
 document.addEventListener('change',event=>{
@@ -297,4 +298,31 @@ document.addEventListener('click',event=>{
   };
  }
 });
+
+const flaviaServiceScope = [["Quarto Isabella","Nivelar a parede do ar-condicionado"],["Quarto Isabella","Avaliar mudança do ar-condicionado e do guarda-roupa, com TV na parede"],["Quarto Isabella","Retirar rodapé da cabeceira e dos 2 metros do guarda-roupa para a cama"],["Quarto Isabella","Acabamento superior da janela"],["Quarto Isabella","Instalar luminárias"],["Banheiro Isabella","Virar a porta do banheiro"],["Banheiro Isabella","Melhorar acabamento da bancada onde foi quebrada"],["Banheiro Isabella","Retoques de massa e pintura"],["Banheiro Isabella","Trocar bacia sanitária"],["Banheiro Isabella","Instalar perfil de alumínio nas divisões entre revestimento e parede"],["Banheiro Isabella","Rejuntar perfil/parede e parede/chão"],["Banheiro Isabella","Trocar piso do ralo"],["Banheiro Isabella","Colocar acabamento no registro"],["Banheiro Isabella","Acabamento com perfil na janela"],["Banheiro Isabella","Instalar chuveiro"],["Banheiro Isabella","Instalar luminária"],["Corredor e escada","Instalar rodapés do corredor"],["Corredor e escada","Instalar luzes do corredor e da subida da escada"],["Corredor e escada","Nivelar o degrau indicado — somente o L de entrada"],["Quarto casal","Dar acabamento à janela"],["Quarto casal","Instalar rodapés"],["Quarto casal","Instalar tomada"],["Quarto casal","Fixar tomada indicada"],["Quarto casal","Instalar luzes do teto"],["Entrada do banheiro Raphaell","Vedar e dar acabamento aos pontos de entrada de luz em volta do vitrô"],["Entrada do banheiro Raphaell","Instalar rodapés na entrada, ou alumínio se necessário"],["Entrada do banheiro Raphaell","Trocar o lado do rodapé e manter o acabamento da entrada"],["Banheiro Raphaell","Dar acabamento no alisar da porta"],["Banheiro Raphaell","Instalar chuveiro"],["Banheiro Raphaell","Instalar iluminação"],["Banheiro Raphaell","Finalizar instalação do rabicho"],["Banheiro Raphaell","Rejuntar juntas entre teto e parede"],["Banheiro Raphaell","Rejuntar juntas entre chão e parede"],["Banheiro Raphaell","Fechar e finalizar teto"],["Banheiro Raphaell","Instalar suporte e chuveirinho"],["Banheiro Raphaell","Colocar acabamentos nos registros"],["Closet Raphaell","Instalar rodapés"],["Closet Flávia","Vedar e dar acabamento aos pontos de entrada de luz"],["Closet Flávia","Instalar rodapés"],["Escritório","Instalar espelho/acabamento do ponto elétrico"],["Escritório","Instalar luminária"],["Escritório","Dar acabamento lateral à janela"],["Escritório","Cortar alumínio próximo à parede/janela"],["Escritório","Colocar rodapé embaixo da janela"],["Acabamentos internos","Finalizar acabamento entre chão e parede no ponto indicado"],["Varanda","Rejuntar piso da varanda"],["Varanda","Finalizar acabamento na parte do ralo"],["Área externa","Dar acabamento e pintar a mureta"],["Área externa","Dar acabamento e pintar o muro"],["Área externa","Emboçar a parte do muro voltada ao vizinho"],["Área externa","Finalizar pintura externa"],["Área externa","Finalizar emboço e pintura da lateral superior"]];
+function importFlaviaServiceList(){
+ const key='flavia-servicos-fotos-20261013';
+ const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+ const exact=db.obras.filter(o=>norm(o['Cliente/Obra'])==='flavia');
+ const candidates=exact.length?exact:db.obras.filter(o=>/^flavia\b/.test(norm(o['Cliente/Obra'])));
+ if(candidates.length!==1)return false;
+ const obra=candidates[0],work=obra['Cliente/Obra'];
+ if((db.importacoesAcompanhamento||[]).includes(key+':'+work))return false;
+ const snapshot=JSON.stringify(db);
+ try{
+  db.andamentoServicos??=[];db.importacoesAcompanhamento??=[];
+  flaviaServiceScope.forEach(([group,name],i)=>{
+   const id=key+'-'+i;
+   if(db.andamentoServicos.some(s=>s.work===work&&(s.id===id||(s.group===group&&s.name===name))))return;
+   db.andamentoServicos.push({id,work,group,name,total:1,unit:'serviço',logs:[],source:'Lista de fotos enviada em 13/10/2026'});
+  });
+  db.importacoesAcompanhamento.push(key+':'+work);save();return true;
+ }catch(error){db=JSON.parse(snapshot);console.error('Não foi possível salvar a lista de serviços da Flávia.',error);return false}
+}
+(function(){
+ const previousShow=show;
+ show=function(kind){importFlaviaServiceList();return previousShow(kind)};
+ importFlaviaServiceList();
+ window.addEventListener('pageshow',importFlaviaServiceList);
+})();
 
