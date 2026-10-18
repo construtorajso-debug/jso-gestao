@@ -213,3 +213,36 @@ abrirListaThiago();window.addEventListener('pageshow',abrirListaThiago);
 </script>
 
 
+
+<script>
+(function(){
+ const prefix='#jso-orcamento=';
+ if(!location.hash.startsWith(prefix))return;
+ try{
+  const encoded=location.hash.slice(prefix.length);
+  if(encoded.length>70000)throw Error('Link muito longo');
+  const raw=JSON.parse(decodeURIComponent(escape(atob(encoded))));
+  if(!raw||typeof raw.cliente!=='string'||!raw.cliente.trim()||!/^\d{4}-\d{2}-\d{2}$/.test(raw.data)||!Array.isArray(raw.items)||!raw.items.length||raw.items.length>200)throw Error('Orçamento inválido');
+  const items=raw.items.map(i=>{
+   if(typeof i.descricao!=='string'||!i.descricao.trim()||typeof i.unidade!=='string'||!Number.isFinite(i.qtd)||i.qtd<=0||!Number.isFinite(i.valor)||i.valor<0)throw Error('Serviço inválido');
+   return {descricao:i.descricao,unidade:i.unidade,qtd:i.qtd,valor:i.valor,dificuldade:'normal',valorFinal:i.valor};
+  });
+  const subtotal=items.reduce((s,i)=>s+Math.round(i.qtd*i.valor*100),0)/100;
+  if(!Number.isFinite(raw.total)||Math.abs(subtotal-raw.total)>0.005)throw Error('Total inválido');
+  const same=db.orcamentos.some(q=>q.id===raw.id||(q.cliente===raw.cliente&&q.data===raw.data&&q.total===raw.total&&JSON.stringify((q.items||[]).map(i=>[i.descricao,i.qtd,i.valor]))===JSON.stringify(items.map(i=>[i.descricao,i.qtd,i.valor]))));
+  if(!same){
+   const snapshot=JSON.stringify(db);
+   try{
+    db.clientes??=[];
+    let client=db.clientes.find(c=>String(c.nome).trim().toLocaleLowerCase('pt-BR')===raw.cliente.trim().toLocaleLowerCase('pt-BR'));
+    if(!client){client={id:crypto.randomUUID(),nome:raw.cliente.trim(),celular:String(raw.celular||''),endereco:String(raw.endereco||'')};db.clientes.push(client)}
+    db.orcamentos.push({id:raw.id||crypto.randomUUID(),clienteId:client.id,cliente:client.nome,celular:String(raw.celular||''),endereco:String(raw.endereco||''),data:raw.data,prazo:String(raw.prazo||''),pagamento:String(raw.pagamento||''),obs:String(raw.obs||''),items,total:subtotal,subtotal,desconto:0,descontoTipo:'valor',descontoValor:0,status:'Pendente',fotos:[]});
+    save();
+   }catch(error){db=JSON.parse(snapshot);throw error}
+  }
+  show('orcamentos');
+  const notice=document.createElement('p');notice.setAttribute('role','status');notice.className='panel';notice.textContent=same?'Este orçamento já está salvo neste aparelho.':'Orçamento adicionado neste aparelho. Os demais dados foram preservados.';
+  document.querySelector('#view').prepend(notice);
+ }catch(error){alert('Não foi possível receber o orçamento: '+error.message)}
+})();
+</script>
