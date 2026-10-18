@@ -246,3 +246,61 @@ abrirListaThiago();window.addEventListener('pageshow',abrirListaThiago);
  }catch(error){alert('Não foi possível receber o orçamento: '+error.message)}
 })();
 </script>
+
+<script>
+
+/* Recebimento privado de um orçamento por código, sem substituir dados locais. */
+(function(){
+ const packet={"iv":"yt7dAh/H8ccOhY8J","data":"ZGa0kzWkJf2pkEUnIyK94xeJO+E/iGLQcxKawhTpAt+AfQo5y3pzepJ7qBjQ6sNvJr9mlubN/sF8CWBl1VG9iNBt3/MI9nYqE4tjx+sXQ0h+Ok3FpzRo051r4gIsxJdlUhCp8JlEiBTBTEGes62v9Zx1Yb1suXE51eJWYJTlcXPTUrDxX5IIKBIH9NJd28eUhqadAnoIWEy9deMm8Hcrukl0rSot4EDNp7tlxqpFzg9hLtzq5dER6MOGl84vC5wJdOzUmnwRWNIZf4VGbRKmLuAcK5Y9o+zMlpq1QSm8FsZlmut1YK2Ty40k7h0SjJujNVeMRZ4oW/au1JLEQHmMbcxUTmLkOhGn5I3hBjukYCDvB+CrYEK5FurhvZm8Y0UZ/r30ISMJtSKCj5/TxGl6E+Nzrqn6VQYuotEh2lOld8UcudyauRwBnDfwmOLngZrWmcIl9iRWavVATAao8AK0vReQ5CgJjyg4mUh81FoHA/Vhw8whdAVyaP0pO5GMKR/VRVI0ZcEgWX7ydkI/I/p2AvF2fivD566VJKE+Zy72zBGdv8Fw9INAko90Vb8usuT4dzqwgZDihk7l8Mldku4UZc4I1sj5Qc5sbn2s6q4XeWymCRlH/YCWbyYdwkfs6keY+Akursg+kbM1qBtbI46WcPJtnCyP7CHtpOI25ywX7ZSRp1QLu3eQvgZ3NSL6asMnXTxwIexpz0WrTHIKLAWyMdBdqhSMZZDss++jYmMmVeFaKb2RQhTHuxt9gAxYYTxlTSPaQVKx6dEGZdtaKbk/M394eKNx0nUKdmZUhmVLQed+zyK+8L5Y0SK2likvS9kt0tl8HvC82lKY4K4dazjAM1FOkCRQVE0R82IaZW+cEM6FV4WLICEeykBC2yVGA8POy0A2moTU3x8FafbO+quDkjak4WVpSwF46OHATh/+FS6XiF8Ve0bE9ijtIQkhqcyERRVNPWzqdzuQ8PT4xVKsfhltCTWEVcYGxbZAyF+pFkjqukPyOn7Je+UrRBTGUse1QGuO7Gi7yUetnOGpQ0jfg7tTF1qiiuim/OtZQQxKyyeSjibMclzE9eMPBZ9/cpZ5y71hVmpeikwjN25sQhb6xsBj/qLYzqQuVx1DQdAvPwbNTJPATguoH5PqojN+m9/O8M704dRkwvseE5S4a11cwS4HHyBUoJT+lJszP7UaV8FP+QAfSeKBJNVPTUC5F/0gER4KSEd8wHABH9cQSDkf76wMnOowkZsEbB0nkNM52kmlBgqcaHrQ+S4A9ExtW89RMbS4SeF5NN8pY0SzYdtDAkBRfnRnLoJrmQvpmqKmSwynA/pYSjMrqcMTZebrAfbf6O7cXL+/yNlYtsZSRmDQyTo97EqxBgecZZM1EaWjss2uDKGIG1uEr6qY2LuiOHUmXbz6EOjHI7CoAOAPHsAH0v08vIUfL0IhkWiQHa7FaUNvltF9GcskaF1aIpErsezp7qeorVnZB8Vr3GtuuBAoCAZ9f7VpS8pVyxytK33k+qns6eWeZXV1JhhJMuh76dYL9mxxOlCBQuxcNTNuWxxiA5L3+VftzysnowQDm0Zutuz4n0fm8OTKG7iWH2uN3fmRLA7BRUzd878mbXx2czKFyl1YLdJk1bp5VHf+Eog9d1PzQ6NeSXTShMxAFgfnz3soQ6CThQUBikTbjqb/Vxj3qGSWPe+GXCAUDJ0iHTR3IE5b5shkYZf0WQB5YIuUsU5tXbYqsfUJMlevqKIclACzu4OzqQBYShpl7bWdrbCExU++3gNZdo3ZA2Ta5si+AQ4TAc/0m8kgy8/urrfvyGXyvWXzs2nK19AmbWq08k2T1DTfYgyGx6vdDpqOY0cqOSoK0pVEbrTufV0UwKx+RwkfqnJv45Uqjzgf9+Kpe4xcWDc9H58H7t2eeBfWEWP8NVqwmMl8JJ6jeNTAR+TnLB5ZHFLr8Z6sd3ACvNWQ0XEoWCxeOkY5uQ/6rHdRZoaF20XAHGUCo1fxiwwJYL4mx33kPjmdCEeBJFGooN9/lkiKRuFS6pqvEefmW8EITKSHtdLKB94Ihwaq1vX79Hn+SVJk2pzeNqEPuVmSh96kQUYUbXBnYzbYYe2v59gesMUfgPEr8yB0tYvyyHxtTzNeVq7lchqf6WFG/24q3m8h8VXqRRMsnPzbW0tuUEvuDJ3QnvkSywcrIht04eDx9IFG9T16rFGPy68yYeUB1JBZW2fwRDXyLlr8myh0sGnEU8FB3IYyxZb/Nq9xiEYM/Nexp3PYH9T3BY7ojhUd9n592m84j8qAOSpq5DlwWeER4sSiw21QaptTlsGI3BQNf6bRjj5sGdPah6UyVSjz7OerACm3WSo+MGm5Oy8hPBEytQhfCqXA5jbN8RJoZiB839rRHdx4Ozv/SEATiNMH7j6Bz+S7E3cNBg4QU5ivCcG6KTuWPbkyZJj3ktWpgjg8XlmF1HNzfydDHNrLJx4sXas7SMUiO1glflq5Jy6kvzcd13oCE0y5o7sUPpA7LJwQ2QqZxmvMxYcsSwdcj+LqNpcVP8twlDWAleR9vJAvBIkKqVgc3QpCZbe04sKXt6foBymeWhq/AIHGv3b4RBQz9QdNappGhGxmvQcu5uMe5vvxJQfCC0mFB4YT0tyvo+ATi4xZuWNe4d0XPrQt1onn96RiPWtLVstqOv0Wxpcd8jEshHhV0dcM9gZs+p8O5Q+9TgG+J7oYEueJJXdu35LdLdfuJPStxifzRDyJATAVFhM5edu3L9U3R3A+ddZ47MhOmb9mv0dxyRmQSiO6Z3b5Y4rfunjNtKj4wPZXTVM2HiDaFDSUUTBGu36xPe8Xf2iUxVsQYuuX7zxYZyGhRTjuwbVZnG8NrR14FTc6lRIg9LYetNIhADDJxLuineXvjCzo7I6i11ZZ5RSlHUwYm/lma+yWl0jeXpd4oZLFmQbAc4utbqjAGBR+uf6/eCnr04SN4sAX4MaQ/iZrCfHFP4uYNJU7F3H8RZHvQVhNuxebKaExsTdmkK+ObTI6tTq3VFH07x40XY19GOge6U1sNFEjxBiDNyVLOTjlM9hWYE4MC66yDMEpEcrQKRC5UVOI2gDYiE0IZdjylegl66I0aV3RnnVl/Ag0fXm4GVdiakp0P/45v9+vsxGueSfguA8gQv16F1ha90d+omPAQTb0qi7rWWoXPRbsm6V183zvEKzXJFhS5KL/S5o7s0X8Mc+xl4EMlzmNNddWRLipNgG8j81tnrF6ohO2Tu56FixM4j68NwSx+5WanxD6QOiaevbhzarsBHjesiay9XPlJ1qjrG9ogNa7JxUS+sAJ9QN4ktiWIU/Ll+2CF23DkLyJJHqNUTqv8tk1WHTyA+4YiRj86bR2VffINO2LzjVM4VSHyMMn32uiLTWXl4gkI7ErMK4Gfc+4mEkQH0vEA/zIGAvhr4X0SBuZKn5oqXfhYzen8i4xMU497wf8V4RftnfdjkwB6AN0v5DETpvh0ZFdc+Mqgw7wn5UC577eBajPL7QAA904xzf5EMsXTEl0Rccfxrc9wmbqsulpU4CQZtrkwTkp+YsSb0VEaI8e8zkXETGXb1xsk4vTZmb56gdUGNLa0KnX46opOD6mUwiezSgQLAvZW4CVnzzmTDvkXfO1Rp0Noai4pEpXYktx9D0+w58MjiGShRN8CY9sVInd+JoPrCuzCOx4aQGloYNHbP/ie19H+CR5yu3xEiWp4S7dJmV9o5TWUVWkgb97TSfzsvb8jMsg98gsdBFDJSZIlKTQzTTapbXBGyt9Bjs5gMyNq+4tlfzGzHMS6KXcjNQMl0qDJBpJTXifqymfhBI57CX/0G2/FERPL3ZLo7fxfILrKTQhxKhu5X2v5GhnraKo1J0Q/xf08KjaW0DmUDMlm2p+UaT2S7PkrMSZINxQlBXgLp88tzZcMjxCfKybzMuF/WdqX6xFVr+NtEIxQUbEPchgAwB762HKi+YZHc7JzwWedgoXfSEEL+n3t1NZS/9WVNGXe9HXGv+2Oxx0lyhGHDZB8pArLLuSudw1xJiJ3wp3mGG96hKZxm/h2i4JfYv6/I/Dc/fv2CBtSm5ig7Mlc1cWPp4HDERF4pEgHJYLRduBk2LFMPjySYydxXCQaBcydXThtPaBwdG5FeROAz/QkSNRr+4OllYpMvq+371+gHQd82CQs6TwcmQHEsPMAb2cBjKTmxlYKwh38c8vfBLZ1L2uq2svhrsiogBVb3Vd9eXapH31rUVFWBcdioCEmTbfgY18wELUkHA9m8zfgtgmAquWB12BAWuA7q+NziLI0IeOSttymVukEeYJ5RG26WHwSP6FfbyhUecThOV5TcCgO2+8ZuifzrZb4nif7PGiFkIKLAcD24M8UCqCENKvSFDxELjMOzFXYwWedFxmnmsqWmnzQFH4pSzkQXioK0umM+gbCpf+LfW8opKfljWSeLSbYx/w4vz7rA7rg9xPISCjW//njdnY3xWwKlyMHtSznnwNdRYU0I3zun10s4QEFehIBinrXvfvLmidAZtzxPAWeqtIYl59LEEkqJ1P9WbGFDl5OqO4LdDZwjrp+5Qwb+6x+hLajZ1Nq4G21f0PzIw+BWr87XeMbfLF8P5l"};
+ const decode=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+ async function readCode(code){
+  const raw=String(code||'').trim().replace(/^JSO-/i,'');
+  if(!/^[A-Za-z0-9_-]{22}$/.test(raw))throw Error('Código inválido. Copie o código completo recebido.');
+  const key=await crypto.subtle.importKey('raw',decode(raw),'AES-GCM',false,['decrypt']);
+  let decrypted;
+  try{decrypted=await crypto.subtle.decrypt({name:'AES-GCM',iv:decode(packet.iv)},key,decode(packet.data))}
+  catch(error){throw Error('Código incorreto. Confira e tente novamente.')}
+  return JSON.parse(new TextDecoder().decode(decrypted));
+ }
+ function addReceivedQuote(raw){
+  if(!raw||typeof raw.id!=='string'||!raw.id||typeof raw.cliente!=='string'||!raw.cliente.trim()||!/^\d{4}-\d{2}-\d{2}$/.test(raw.data)||!Array.isArray(raw.items)||!raw.items.length||raw.items.length>200)throw Error('Orçamento inválido.');
+  const items=raw.items.map(i=>{
+   if(typeof i.descricao!=='string'||!i.descricao.trim()||typeof i.unidade!=='string'||!Number.isFinite(i.qtd)||i.qtd<=0||!Number.isFinite(i.valor)||i.valor<0)throw Error('Serviço inválido.');
+   return {descricao:i.descricao,unidade:i.unidade,qtd:i.qtd,valor:i.valor,dificuldade:'normal',valorFinal:i.valor};
+  });
+  const total=items.reduce((s,i)=>s+Math.round(i.qtd*i.valor*100),0)/100;
+  if(!Number.isFinite(raw.total)||Math.abs(raw.total-total)>0.005)throw Error('Total inválido.');
+  const same=db.orcamentos.some(q=>q.id===raw.id||(q.cliente===raw.cliente&&q.data===raw.data&&q.total===total&&JSON.stringify((q.items||[]).map(i=>[i.descricao,i.qtd,i.valor]))===JSON.stringify(items.map(i=>[i.descricao,i.qtd,i.valor]))));
+  if(same)return false;
+  const snapshot=JSON.stringify(db);
+  try{
+   db.clientes??=[];
+   let client=db.clientes.find(c=>String(c.nome).trim().toLocaleLowerCase('pt-BR')===raw.cliente.trim().toLocaleLowerCase('pt-BR'));
+   if(!client){client={id:crypto.randomUUID(),nome:raw.cliente.trim(),celular:String(raw.celular||''),endereco:String(raw.endereco||'')};db.clientes.push(client)}
+   db.orcamentos.push({id:raw.id,clienteId:client.id,cliente:client.nome,celular:String(raw.celular||''),endereco:String(raw.endereco||''),data:raw.data,prazo:String(raw.prazo||''),pagamento:String(raw.pagamento||''),obs:String(raw.obs||''),items,total,subtotal:total,desconto:0,descontoTipo:'valor',descontoValor:0,status:'Pendente',fotos:[]});
+   save();return true;
+  }catch(error){db=JSON.parse(snapshot);throw Error('Não foi possível salvar. Verifique o espaço livre no aparelho.')}
+ }
+ function receiveForm(){
+  modal('<h2>Receber orçamento por código</h2><p>Cole o código recebido da JSO. O orçamento será acrescentado neste aparelho.</p><label>Código do orçamento<input id="jso-receive-code" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="JSO-..." style="font-size:16px"></label><p id="jso-receive-status" role="status"></p><div class="actions"><button class="btn" id="jso-receive-save">Adicionar orçamento</button><button class="btn alt" data-action="close">Cancelar</button></div>');
+  document.querySelector('#jso-receive-save').onclick=async()=>{
+   const button=document.querySelector('#jso-receive-save'),status=document.querySelector('#jso-receive-status');
+   button.disabled=true;status.textContent='Conferindo código…';
+   try{
+    const quote=await readCode(document.querySelector('#jso-receive-code').value),added=addReceivedQuote(quote);
+    closeM();quotes();
+    const notice=document.createElement('p');notice.className='panel';notice.setAttribute('role','status');notice.textContent=added?'Orçamento adicionado: '+quote.cliente+' — '+money(quote.total)+'. Os demais dados foram preservados.':'Este orçamento já está cadastrado neste aparelho.';
+    document.querySelector('#view').prepend(notice);
+   }catch(error){status.textContent=error.message;button.disabled=false}
+  };
+ }
+ const originalQuotes=quotes;
+ quotes=function(){
+  originalQuotes();
+  const actions=document.querySelector('#view .title .actions');
+  if(!actions)return;
+  const button=document.createElement('button');button.type='button';button.className='btn';button.textContent='Receber orçamento por código';button.onclick=receiveForm;actions.prepend(button);
+ };
+})();
+
+</script>
